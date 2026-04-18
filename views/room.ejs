@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>IFD Meet - Reunión</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/room.css">
+</head>
+<body>
+  <div id="screen-waiting" class="screen waiting-screen">
+    <div class="waiting-container">
+      <div class="waiting-card">
+        <div class="waiting-logo">
+          <img src="/img/logo-ifd.png" alt="IFD" onerror="this.parentElement.innerHTML='<span class=material-icons>school</span>'">
+        </div>
+        <h2>Esperando para unirse</h2>
+        <p id="waiting-message">El anfitrión debe admitirte para entrar a la reunión.</p>
+        <div class="waiting-spinner">
+          <div class="spinner-dot"></div>
+          <div class="spinner-dot"></div>
+          <div class="spinner-dot"></div>
+        </div>
+        <button class="btn btn-text" onclick="leaveWaiting()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-room" class="screen room-screen" style="display:none">
+    
+    <header class="room-header">
+      <div class="header-start">
+        <div class="room-title">
+          <span class="material-icons room-icon">video_camera_front</span>
+          <span class="room-name">IFD Meet</span>
+        </div>
+      </div>
+      
+      <div class="header-center">
+        <span id="room-time" class="time-display"></span>
+        <span class="separator">•</span>
+        <span id="room-code" class="code-display" title="Código de sala"></span>
+        <button class="icon-btn-sm" onclick="copyRoomLink()" title="Copiar enlace">
+          <span class="material-icons">content_copy</span>
+        </button>
+      </div>
+      
+      <div class="header-end">
+        <button class="icon-btn" id="btn-people" onclick="togglePanel('people')" title="Participantes">
+          <span class="material-icons">people</span>
+          <span class="badge" id="people-count">1</span>
+        </button>
+        <button class="icon-btn" id="btn-chat" onclick="togglePanel('chat')" title="Chat">
+          <span class="material-icons">chat</span>
+          <span class="badge notification" id="chat-badge" style="display:none">0</span>
+        </button>
+        <button class="icon-btn" id="btn-activities" title="Actividades">
+          <span class="material-icons">widgets</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="room-main">
+      <div class="video-area">
+        <div id="videos-grid" class="videos-grid"></div>
+        <div id="screen-share-overlay" class="screen-share-overlay" style="display:none">
+          <span class="material-icons">present_to_all</span>
+          <span>Compartiendo pantalla</span>
+        </div>
+      </div>
+
+      <aside class="side-panel" id="side-panel">
+        <div id="panel-people" class="panel" style="display:none">
+          <div class="panel-header">
+            <h3>Participantes</h3>
+            <button class="panel-close" onclick="togglePanel(null)">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          <div class="panel-search">
+            <span class="material-icons">search</span>
+            <input type="text" placeholder="Buscar personas..." id="search-participants">
+          </div>
+          <div id="participants-list" class="participants-list"></div>
+        </div>
+
+        <div id="panel-chat" class="panel" style="display:none">
+          <div class="panel-header">
+            <h3>Chat de la reunión</h3>
+            <button class="panel-close" onclick="togglePanel(null)">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+          
+          <div id="chat-messages" class="chat-messages"></div>
+          
+          <div id="attachment-preview" class="attachment-preview" style="display:none"></div>
+          
+          <div class="chat-input-container">
+            <div class="chat-toolbar">
+              <label class="tool-btn" title="Adjuntar archivo">
+                <span class="material-icons">attach_file</span>
+                <input type="file" id="file-input" hidden multiple onchange="handleFileSelect(event)">
+              </label>
+              <label class="tool-btn" title="Insertar emoji">
+                <span class="material-icons">emoji_emotions</span>
+              </label>
+              <label class="tool-btn" title="Formato">
+                <span class="material-icons">format_size</span>
+              </label>
+            </div>
+            <div class="chat-compose">
+              <textarea id="chat-input" class="chat-textarea" placeholder="Enviar un mensaje a la reunión..." rows="1" oninput="autoResize(this)" onkeydown="handleChatKeydown(event)"></textarea>
+              <button class="btn-send" id="btn-send-message" onclick="sendMessage()" disabled>
+                <span class="material-icons">send</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="controls-bar">
+      <div class="controls-left">
+        <span id="ctrl-info" class="ctrl-text"></span>
+      </div>
+      
+      <div class="controls-center">
+        <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" title="Silenciar micrófono (M)">
+          <span class="material-icons ctrl-icon" id="icon-mic">mic</span>
+          <span class="ctrl-label">Mic</span>
+        </button>
+        
+        <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()" title="Apagar cámara (E)">
+          <span class="material-icons ctrl-icon" id="icon-cam">videocam</span>
+          <span class="ctrl-label">Cámara</span>
+        </button>
+        
+        <button class="ctrl-btn" id="btn-screen" onclick="toggleScreenShare()" title="Compartir pantalla">
+          <span class="material-icons ctrl-icon">present_to_all</span>
+          <span class="ctrl-label">Presentar</span>
+        </button>
+        
+        <div class="ctrl-divider"></div>
+        
+        <div class="ctrl-dropdown">
+          <button class="ctrl-btn" onclick="toggleReactionsMenu()" title="Reacciones">
+            <span class="material-icons ctrl-icon">emoji_emotions</span>
+          </button>
+          <div class="reactions-menu" id="reactions-menu">
+            <button class="reaction-btn" onclick="sendReaction('👍')" title="Me gusta">👍</button>
+            <button class="reaction-btn" onclick="sendReaction('❤️')" title="Me encanta">❤️</button>
+            <button class="reaction-btn" onclick="sendReaction('😂')" title="Me divierte">😂</button>
+            <button class="reaction-btn" onclick="sendReaction('😮')" title="Me sorprende">😮</button>
+            <button class="reaction-btn" onclick="sendReaction('👏')" title="Aplausos">👏</button>
+            <button class="reaction-btn" onclick="sendReaction('🎓')" title="IFD">🎓</button>
+          </div>
+        </div>
+        
+        <button class="ctrl-btn ctrl-danger" id="btn-leave" onclick="leaveMeeting()" title="Salir de la reunión">
+          <span class="material-icons ctrl-icon">call_end</span>
+          <span class="ctrl-label">Salir</span>
+        </button>
+      </div>
+      
+      <div class="controls-right">
+        <button class="icon-btn-sm" onclick="toggleSettings()" title="Configuración">
+          <span class="material-icons">settings</span>
+        </button>
+      </div>
+    </footer>
+
+    <div id="waiting-panel" class="waiting-panel" style="display:none">
+      <div class="waiting-panel-header">
+        <span><span class="material-icons">hourglass_empty</span> Personas esperando</span>
+        <button class="waiting-panel-close" onclick="document.getElementById('waiting-panel').style.display='none'">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div id="waiting-list" class="waiting-list"></div>
+    </div>
+
+    <div id="reactions-overlay"></div>
+
+    <div id="dismissed-overlay" class="dismissed-overlay" style="display:none">
+      <div class="dismissed-card">
+        <span class="material-icons dismissed-icon">meeting_room</span>
+        <h3 id="dismissed-title">No podés entrar a esta reunión</h3>
+        <p id="dismissed-message"></p>
+        <button class="btn btn-primary" onclick="window.location.href='/'">Volver al inicio</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  
+  <script>
+    const ROOM_ID = "<%= roomId %>";
+    
+    // Variables de usuario
+    var isLoggedIn = false;
+    var currentUser = null;
+    <% if (typeof user !== 'undefined' && user) { %>
+      isLoggedIn = true;
+      currentUser = <%- JSON.stringify(user) %>;
+    <% } %>
+  </script>
+  
+  <script src="/js/room.js"></script>
+</body>
+</html>
