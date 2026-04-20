@@ -17,10 +17,7 @@ const path = require("path");
 
 // ================= CONFIGURACIÓN GLOBAL =================
 const PORT = process.env.PORT || 3000;
-// ✅ Forzar URL de producción cuando está en Render
-const APP_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://meet-ifd.onrender.com'  // ← Tu URL real
-  : process.env.APP_URL || `http://localhost:${PORT}`;
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 // ================= EXPRESS CONFIG =================
@@ -249,6 +246,7 @@ io.on("connection", (socket) => {
   
   // Unirse a una sala
   socket.on("join-room", (roomId, userId, userName, isHost, userEmail, userPhoto) => {
+    
     // Crear sala si no existe
     if (!rooms[roomId]) {
       rooms[roomId] = { 
@@ -259,17 +257,22 @@ io.on("connection", (socket) => {
       };
     }
     
+    // Inicializar lista de espera si no existe
     if (!waitingRooms[roomId]) {
       waitingRooms[roomId] = [];
     }
     
     // Registrar participante
     rooms[roomId].participants[socket.id] = { 
-      userId, userName, userEmail, userPhoto, 
-      socketId: socket.id, joinedAt: Date.now() 
+      userId, 
+      userName, 
+      userEmail, 
+      userPhoto, 
+      socketId: socket.id, 
+      joinedAt: Date.now() 
     };
-  
-    // ✅ Si es HOST → entra directo
+
+    // Si es host o el mismo usuario que creó la sala
     if (isHost || rooms[roomId].hostUserId === userId) {
       rooms[roomId].host = socket.id;
       rooms[roomId].hostUserId = userId;
@@ -286,11 +289,14 @@ io.on("connection", (socket) => {
       socket.emit("waiting-list", waitingRooms[roomId]);
       return;
     }
-  
-    // ❌ Si NO es host → agregar a lista de espera
+
+    // Si no es host, agregar a lista de espera
     const waitData = { 
       socketId: socket.id, 
-      userId, userName, userEmail, userPhoto, 
+      userId, 
+      userName, 
+      userEmail, 
+      userPhoto, 
       requestedAt: Date.now() 
     };
     
