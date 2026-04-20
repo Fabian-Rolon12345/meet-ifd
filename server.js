@@ -43,7 +43,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Google OAuth Strategy
+// Google OAuth Strategy - CON FIX PARA EMAIL/FOTO OPCIONALES
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
@@ -51,10 +51,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       callbackURL: `${APP_URL}/auth/google/callback`
     },
     function(accessToken, refreshToken, profile, cb) {
+      // ✅ Usamos ?. para evitar errores si Google no manda email o foto
       const user = {
         id: profile.id,
         name: profile.displayName,
-        email: profile.emails?.[0]?.value || "",
+        email: profile.emails?.[0]?.value || "sin-email@gmail.com",
         photo: profile.photos?.[0]?.value || "",
         accessToken: accessToken
       };
