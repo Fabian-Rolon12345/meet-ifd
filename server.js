@@ -32,11 +32,12 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: NODE_ENV === "production",
-    sameSite: NODE_ENV === "production" ? "none" : "lax",
+    secure: true, // Siempre true para HTTPS en Render
+    sameSite: "none", // Necesario para cookies cross-site
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000
-  }
+  },
+  proxy: true // Importante para Render
 }));
 
 // Passport configuration
@@ -51,7 +52,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       callbackURL: `${APP_URL}/auth/google/callback`
     },
     function(accessToken, refreshToken, profile, cb) {
-      // ✅ Usamos ?. para evitar errores si Google no manda email o foto
       const user = {
         id: profile.id,
         name: profile.displayName,
