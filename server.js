@@ -94,11 +94,7 @@ app.get('/auth/google/callback',
 // ✅ PÁGINA DE VERIFICACIÓN CONTRASEÑA IFD
 // Muestra el modal de contraseña después del login con Google
 app.get('/verificar-ifd', (req, res) => {
-  res.render('verificar-ifd', {
-    user: req.isAuthenticated() ? req.user : null,
-    ifdVerified: req.session.ifdVerified || false
-  });
-});
+  
   if (!req.isAuthenticated()) return res.redirect('/');
 
   // Si ya verificó, ir directo al inicio
