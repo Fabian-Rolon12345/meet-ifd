@@ -16,14 +16,257 @@
     }
     html, body { height: 100%; overflow: hidden; font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--t1); }
 
+    /* ══ MODAL IFD PASSWORD ══ */
+    #ifd-modal {
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,0.92);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; backdrop-filter: blur(10px);
+    }
+    .ifd-card {
+      background: white; border-radius: 20px; padding: 40px 36px;
+      width: 100%; max-width: 420px; color: #202124;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+      animation: ifdSlideUp 0.4s cubic-bezier(0.16,1,0.3,1);
+      position: relative; overflow: hidden;
+    }
+    .ifd-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #6d1a2e, #a02040, #6d1a2e);
+    }
+    @keyframes ifdSlideUp {
+      from { opacity:0; transform:translateY(24px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .ifd-logo-wrap {
+      text-align: center; margin-bottom: 24px;
+    }
+    .ifd-logo-icon {
+      width: 68px; height: 68px; border-radius: 16px;
+      background: linear-gradient(135deg, #6d1a2e, #a02040);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 14px; font-size: 30px;
+      box-shadow: 0 8px 24px rgba(109,26,46,0.35);
+    }
+    .ifd-card h2 {
+      font-family: 'Google Sans', sans-serif; font-size: 22px;
+      font-weight: 600; color: #202124; margin-bottom: 4px; text-align: center;
+    }
+    .ifd-card .ifd-sub {
+      font-size: 13px; color: #666; text-align: center; line-height: 1.5; margin-bottom: 24px;
+    }
+    /* Paso indicador */
+    .ifd-steps {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; margin-bottom: 24px;
+    }
+    .ifd-step-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ddd; transition: background 0.3s;
+    }
+    .ifd-step-dot.active { background: #6d1a2e; }
+    /* User info */
+    .ifd-user-row {
+      display: flex; align-items: center; gap: 10px;
+      background: #f8f9fa; border-radius: 12px;
+      padding: 10px 14px; margin-bottom: 20px;
+    }
+    .ifd-user-ava {
+      width: 38px; height: 38px; border-radius: 50%;
+      object-fit: cover; border: 2px solid #ddd;
+    }
+    .ifd-user-ava-ph {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: #6d1a2e; color: white; font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ifd-user-info p { font-size: 13px; font-weight: 600; color: #202124; }
+    .ifd-user-info span { font-size: 11px; color: #888; }
+    /* Labels e inputs */
+    .ifd-label {
+      display: block; font-size: 11px; font-weight: 700; color: #444;
+      text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px;
+    }
+    .ifd-input-wrap { position: relative; margin-bottom: 6px; }
+    .ifd-input-wrap input {
+      width: 100%; padding: 13px 44px 13px 14px;
+      border: 2px solid #e0e0e0; border-radius: 10px;
+      font-size: 15px; font-family: inherit; color: #202124;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fafafa; letter-spacing: 1px;
+    }
+    .ifd-input-wrap input:focus {
+      outline: none; border-color: #6d1a2e;
+      box-shadow: 0 0 0 3px rgba(109,26,46,0.12); background: white;
+    }
+    .ifd-eye {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 18px;
+      color: #888; padding: 4px; transition: color 0.2s;
+    }
+    .ifd-eye:hover { color: #6d1a2e; }
+    .ifd-hint { font-size: 12px; color: #999; margin-bottom: 18px; }
+    .ifd-error {
+      background: #ffebee; color: #c62828; border: 1px solid #ffcdd2;
+      border-radius: 8px; padding: 9px 13px; font-size: 13px;
+      margin-bottom: 14px; display: none; align-items: center; gap: 8px;
+    }
+    .ifd-error.show { display: flex; }
+    .ifd-btn-primary {
+      width: 100%; padding: 14px; border: none; border-radius: 10px;
+      background: linear-gradient(135deg, #6d1a2e, #a02040);
+      color: white; font-size: 15px; font-weight: 600;
+      font-family: inherit; cursor: pointer; margin-bottom: 12px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 16px rgba(109,26,46,0.3);
+    }
+    .ifd-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(109,26,46,0.4); }
+    .ifd-btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .ifd-btn-secondary {
+      width: 100%; padding: 11px; border: 1px solid #e0e0e0;
+      border-radius: 10px; background: transparent; color: #666;
+      font-size: 13px; font-family: inherit; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .ifd-btn-secondary:hover { background: #f5f5f5; }
+    .ifd-divider { text-align: center; color: #bbb; font-size: 12px; margin: 10px 0; }
+    .ifd-google-btn {
+      width: 100%; padding: 11px; border: 1px solid #dadce0;
+      border-radius: 10px; background: white; color: #202124;
+      font-size: 14px; font-family: inherit; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+    }
+    .ifd-google-btn:hover { background: #f8f9fa; box-shadow: 0 1px 6px rgba(0,0,0,0.1); }
+    .ifd-google-icon { width: 18px; height: 18px; }
+    .ifd-success-box {
+      background: #e8f5e9; border: 1px solid #c8e6c9;
+      border-radius: 10px; padding: 10px 14px;
+      color: #2e7d32; font-size: 13px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ifd-spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══ MODAL SALA DE ESPERA ══ */
+    #waiting-modal {
+      position: fixed; inset: 0; z-index: 99998;
+      background: rgba(0,0,0,0.88);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px; backdrop-filter: blur(8px);
+    }
+    #waiting-modal.show { display: flex; }
+    .waiting-card {
+      background: white; border-radius: 20px; padding: 40px 32px;
+      max-width: 360px; width: 100%; text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+      animation: ifdSlideUp 0.4s ease;
+    }
+    .waiting-spinner-wrap {
+      width: 72px; height: 72px; margin: 0 auto 20px;
+      border-radius: 50%; background: #f5f5f5;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+    }
+    .waiting-bar {
+      width: 100%; height: 4px; background: #f0f0f0;
+      border-radius: 2px; overflow: hidden; margin: 16px 0 24px;
+    }
+    .waiting-bar-fill {
+      height: 100%; width: 40%;
+      background: linear-gradient(90deg, #6d1a2e, #a02040);
+      border-radius: 2px;
+      animation: waitingPulse 1.8s ease-in-out infinite;
+    }
+    @keyframes waitingPulse {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+    .waiting-cancel {
+      padding: 10px 24px; background: #f5f5f5; border: none;
+      border-radius: 8px; cursor: pointer; color: #666;
+      font-family: inherit; font-size: 14px; transition: background 0.2s;
+    }
+    .waiting-cancel:hover { background: #ffe0e0; color: #c62828; }
+
+    /* ══ PANEL SOLICITUDES (HOST) ══ */
+    #requests-panel {
+      position: fixed; top: 80px; right: 16px; z-index: 9000;
+      width: 310px; display: none; flex-direction: column; gap: 8px;
+    }
+    #requests-panel.show { display: flex; }
+    .req-header {
+      background: linear-gradient(135deg, #6d1a2e, #a02040);
+      color: white; padding: 10px 14px; border-radius: 12px 12px 0 0;
+      font-size: 13px; font-weight: 600; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .req-list { background: white; border-radius: 0 0 12px 12px; overflow: hidden; }
+    .req-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-bottom: 1px solid #f5f5f5;
+    }
+    .req-item:last-child { border-bottom: none; }
+    .req-ava {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: #6d1a2e; color: white; font-weight: 700; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .req-ava img { width: 100%; height: 100%; object-fit: cover; }
+    .req-info { flex: 1; min-width: 0; }
+    .req-name { font-size: 13px; font-weight: 600; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .req-email { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .req-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .req-admit {
+      padding: 6px 11px; background: #1e8e3e; color: white;
+      border: none; border-radius: 7px; cursor: pointer;
+      font-size: 12px; font-weight: 600; transition: background 0.2s;
+    }
+    .req-admit:hover { background: #137333; }
+    .req-reject {
+      padding: 6px 11px; background: #f5f5f5; color: #c62828;
+      border: 1px solid #ffcdd2; border-radius: 7px; cursor: pointer;
+      font-size: 12px; font-weight: 600; transition: background 0.2s;
+    }
+    .req-reject:hover { background: #ffebee; }
+
+    /* ══ INDICADOR GRABACIÓN ══ */
+    #rec-indicator {
+      display: none; align-items: center; gap: 6px;
+      background: rgba(234,67,53,0.15); border: 1px solid rgba(234,67,53,0.4);
+      border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #ea4335;
+    }
+    #rec-indicator.show { display: flex; }
+    .rec-dot {
+      width: 7px; height: 7px; background: #ea4335;
+      border-radius: 50%; animation: recPulse 1s infinite;
+    }
+    @keyframes recPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+    #btn-record.recording { background: var(--red) !important; }
+
+    /* ══ TOAST GLOBAL ══ */
+    #global-toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      padding: 11px 22px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      z-index: 9997; pointer-events: none; opacity: 0;
+      transition: opacity 0.3s; max-width: 380px; text-align: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    #global-toast.show { opacity: 1; }
+
     /* ══ LOBBY ══ */
     #lobby { position: fixed; inset: 0; z-index: 1000; background: #111214; display: flex; flex-direction: column; }
     .lobby-header { height: 64px; display: flex; align-items: center; padding: 0 24px; gap: 12px; border-bottom: 1px solid var(--brd); flex-shrink: 0; }
     .lobby-logo { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
     .lobby-brand { font-family: 'Google Sans', sans-serif; font-size: 20px; font-weight: 500; }
     .lobby-body { flex: 1; display: flex; align-items: center; justify-content: center; gap: 40px; padding: 32px; flex-wrap: wrap; overflow-y: auto; }
-
-    /* Preview */
     .lobby-preview { position: relative; width: 560px; max-width: 100%; aspect-ratio: 16/9; background: #1a1a1d; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.5); flex-shrink: 0; }
     #lobby-video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
     .lobby-cam-off { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #1a1a1d; }
@@ -35,8 +278,6 @@
     .lctrl:hover { background: rgba(82,87,92,0.9); }
     .lctrl.off { background: var(--red); }
     .lctrl .material-icons-round { font-size: 20px; }
-
-    /* Panel blanco */
     .lobby-panel { width: 340px; max-width: 100%; background: white; border-radius: 16px; padding: 28px 24px; color: #202124; box-shadow: 0 4px 20px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 20px; }
     .lobby-panel h2 { font-family: 'Google Sans', sans-serif; font-size: 22px; font-weight: 500; }
     .lobby-link-box { display: flex; align-items: center; border: 1px solid #dadce0; border-radius: 8px; padding: 10px 14px; gap: 8px; background: #f8f9fa; }
@@ -73,135 +314,26 @@
     .badge { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; background: var(--maroon); color: white; border-radius: 8px; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
 
     #main { flex: 1; display: flex; overflow: hidden; position: relative; }
-
-    /* ==================== VIDEO AREA MEJORADO ==================== */
-    #video-area { 
-      flex: 1; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      padding: 24px; 
-      overflow: hidden; 
-      background: var(--bg); 
-    }
-
-    #videos-grid { 
-      width: 100%; 
-      height: 100%; 
-      display: grid; 
-      gap: 16px; 
-      align-content: center; 
-      justify-content: center; 
-      align-items: center; 
-      max-width: 1280px; /* evita que se estire demasiado */
-    }
-
-    /* Cuando estás solo → cámara más chica y profesional (como Google Meet) */
-    #videos-grid.n1 { 
-      grid-template-columns: 1fr; 
-    }
-
-    #videos-grid.n1 .video-tile {
-      width: 420px;           /* ← Tamaño principal: más chico y centrado */
-      max-width: 100%;
-      margin: 0 auto;
-      aspect-ratio: 16/9;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.65);
-      border-radius: 16px;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
-    }
-
-    #videos-grid.n1 .video-tile:hover {
-      transform: scale(1.03);
-      box-shadow: 0 15px 50px rgba(0,0,0,0.75);
-    }
-
-    /* Para 2 o más participantes */
-    #videos-grid.n2 .video-tile,
-    #videos-grid.n3 .video-tile,
-    #videos-grid.n4 .video-tile {
-      aspect-ratio: 16/9;
-      min-height: 220px;
-    }
-
-    #videos-grid.n5, #videos-grid.n6 {
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-    /* Estilo general de las tiles */
-    .video-tile { 
-      position: relative; 
-      background: var(--surface); 
-      border-radius: 16px; 
-      overflow: hidden; 
-      aspect-ratio: 16/9; 
-      min-height: 0; 
-      border: 2px solid transparent; 
-      transition: border-color .2s, box-shadow .2s; 
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    }
-
-    .video-tile.speaking { 
-      border-color: var(--green); 
-    }
-
-    .video-tile video { 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; 
-      display: block; 
-    }
-
-    .video-tile.self video { 
-      transform: scaleX(-1); 
-    }
-
-    .tile-placeholder { 
-      position: absolute; 
-      inset: 0; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      justify-content: center; 
-      gap: 12px; 
-      background: linear-gradient(135deg,var(--maroon),var(--maroon-d)); 
-    }
-
-    .tile-avatar { 
-      width: 72px; 
-      height: 72px; 
-      border-radius: 50%; 
-      background: rgba(255,255,255,0.15); 
-      border: 3px solid rgba(255,255,255,0.25); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-size: 28px; 
-      font-weight: 700; 
-      color: white; 
-    }
-
-    .tile-label { 
-      position: absolute; 
-      bottom: 12px; 
-      left: 12px; 
-      background: rgba(0,0,0,0.65); 
-      backdrop-filter: blur(8px); 
-      padding: 6px 14px; 
-      border-radius: 20px; 
-      font-size: 13.5px; 
-      font-weight: 500; 
-      color: white; 
-      display: flex; 
-      align-items: center; 
-      gap: 6px; 
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-    }
-
+    #video-area { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: hidden; background: var(--bg); }
+    #videos-grid { width: 100%; height: 100%; display: grid; gap: 16px; align-content: center; justify-content: center; align-items: center; max-width: 1280px; }
+    #videos-grid.n1 { grid-template-columns: 1fr; }
+    #videos-grid.n1 .video-tile { width: 420px; max-width: 100%; margin: 0 auto; aspect-ratio: 16/9; box-shadow: 0 10px 40px rgba(0,0,0,0.65); border-radius: 16px; transition: transform 0.25s ease, box-shadow 0.25s ease; }
+    #videos-grid.n1 .video-tile:hover { transform: scale(1.03); box-shadow: 0 15px 50px rgba(0,0,0,0.75); }
+    #videos-grid.n2 { grid-template-columns: repeat(2, 1fr); }
+    #videos-grid.n3, #videos-grid.n4 { grid-template-columns: repeat(2, 1fr); }
+    #videos-grid.n5, #videos-grid.n6 { grid-template-columns: repeat(3, 1fr); }
+    #videos-grid.n2 .video-tile, #videos-grid.n3 .video-tile, #videos-grid.n4 .video-tile { aspect-ratio: 16/9; min-height: 220px; }
+    .video-tile { position: relative; background: var(--surface); border-radius: 16px; overflow: hidden; aspect-ratio: 16/9; min-height: 0; border: 2px solid transparent; transition: border-color .2s, box-shadow .2s; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    .video-tile.speaking { border-color: var(--green); }
+    .video-tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .video-tile.self video { transform: scaleX(-1); }
+    .tile-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: linear-gradient(135deg,var(--maroon),var(--maroon-d)); }
+    .tile-avatar { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: white; }
+    .tile-label { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); padding: 6px 14px; border-radius: 20px; font-size: 13.5px; font-weight: 500; color: white; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
     .tile-label .material-icons-round { font-size: 14px; }
     .tile-label .m { color: var(--red); }
 
-    /* Panel */
+    /* Panel lateral */
     #side-panel { width: 360px; background: var(--surface); border-left: 1px solid var(--brd); display: none; flex-direction: column; flex-shrink: 0; z-index: 50; }
     #side-panel.open { display: flex; }
     .panel-tabs { display: flex; border-bottom: 1px solid var(--brd); flex-shrink: 0; }
@@ -221,7 +353,7 @@
     .p-icons .material-icons-round { font-size: 16px; }
     .p-icons .m { color: var(--red); }
 
-    /* ══ CHAT ══ */
+    /* Chat */
     #pane-chat { display: none; flex-direction: column; flex: 1; overflow: hidden; background: #1a1a1d; }
     #pane-chat.on { display: flex; }
     .chat-msgs { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth; }
@@ -303,24 +435,113 @@
       #header { padding: 0 10px; }
       .h-name { display: none; }
       #side-panel { position: absolute; right: 0; top: 64px; bottom: 76px; width: 100%; max-width: 340px; }
-      
-      /* En móvil la cámara sola también se ajusta */
-      #videos-grid.n1 .video-tile {
-        width: 92%;
-      }
+      #videos-grid.n1 .video-tile { width: 92%; }
+      #requests-panel { width: calc(100% - 32px); }
     }
   </style>
 </head>
 <body>
-<!-- ══ LOBBY ══ -->
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL CONTRASEÑA IFD
+     Aparece si el usuario NO está verificado
+══════════════════════════════════════════════════════ -->
+<div id="ifd-modal" style="display:none">
+  <div class="ifd-card">
+    <div class="ifd-logo-wrap">
+      <div class="ifd-logo-icon">🎓</div>
+      <h2>IFD Meet</h2>
+      <p class="ifd-sub">Instituto de Formación Docente<br>Santa Rosa, Misiones</p>
+    </div>
+
+    <!-- Pasos -->
+    <div class="ifd-steps">
+      <div class="ifd-step-dot active" id="dot-1"></div>
+      <div class="ifd-step-dot" id="dot-2"></div>
+    </div>
+
+    <!-- PASO 1: Contraseña -->
+    <div id="ifd-step-1">
+      <label class="ifd-label">Contraseña institucional</label>
+      <div class="ifd-input-wrap">
+        <input type="password" id="ifd-pw-input"
+          placeholder="Contraseña del IFD"
+          onkeydown="if(event.key==='Enter') ifdVerificar()"
+          oninput="document.getElementById('ifd-err').classList.remove('show')" />
+        <button class="ifd-eye" onclick="ifdToggleEye()" type="button">👁️</button>
+      </div>
+      <p class="ifd-hint">Solo para miembros del IFD Santa Rosa</p>
+      <div class="ifd-error" id="ifd-err">
+        <span>🔒</span><span id="ifd-err-msg">Contraseña incorrecta</span>
+      </div>
+      <button class="ifd-btn-primary" id="ifd-verify-btn" onclick="ifdVerificar()">
+        Verificar contraseña
+      </button>
+      <div class="ifd-divider">— o —</div>
+      <a href="/auth/google" class="ifd-google-btn">
+        <img class="ifd-google-icon"
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+        Iniciar sesión con Google
+      </a>
+    </div>
+
+    <!-- PASO 2: Nombre (solo invitados sin Google) -->
+    <div id="ifd-step-2" style="display:none">
+      <div class="ifd-success-box">✅ Contraseña correcta</div>
+      <label class="ifd-label">Tu nombre completo</label>
+      <div class="ifd-input-wrap">
+        <input type="text" id="ifd-name-input"
+          placeholder="Ej: María González"
+          onkeydown="if(event.key==='Enter') ifdEntrarInvitado()" />
+      </div>
+      <p class="ifd-hint" style="margin-bottom:16px">Este nombre se verá en la reunión</p>
+      <button class="ifd-btn-primary" onclick="ifdEntrarInvitado()">
+        Entrar a la reunión →
+      </button>
+      <button class="ifd-btn-secondary" style="margin-top:8px" onclick="ifdVolver()">
+        ← Volver
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL SALA DE ESPERA
+══════════════════════════════════════════════════════ -->
+<div id="waiting-modal">
+  <div class="waiting-card">
+    <div class="waiting-spinner-wrap">⏳</div>
+    <h3 style="font-family:'Google Sans',sans-serif;font-size:20px;color:#202124;margin-bottom:8px">
+      Esperando admisión
+    </h3>
+    <p style="color:#666;font-size:14px" id="waiting-msg">
+      El anfitrión revisará tu solicitud...
+    </p>
+    <div class="waiting-bar"><div class="waiting-bar-fill"></div></div>
+    <button class="waiting-cancel" onclick="leaveMeeting()">Cancelar y salir</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PANEL SOLICITUDES (solo visible para el HOST)
+══════════════════════════════════════════════════════ -->
+<div id="requests-panel">
+  <div class="req-header">
+    <span>🙋 Solicitudes de ingreso</span>
+    <span id="req-count">0</span>
+  </div>
+  <div class="req-list" id="req-list"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LOBBY
+══════════════════════════════════════════════════════ -->
 <div id="lobby">
   <div class="lobby-header">
     <img src="/img/logo-ifd.png" alt="IFD" class="lobby-logo" onerror="this.style.display='none'">
     <span class="lobby-brand">IFD Meet</span>
   </div>
   <div class="lobby-body">
-
-    <!-- Preview cámara -->
     <div class="lobby-preview">
       <video id="lobby-video" autoplay playsinline muted></video>
       <div class="lobby-cam-off" id="lobby-cam-off">
@@ -340,10 +561,8 @@
       </div>
     </div>
 
-    <!-- Panel blanco -->
     <div class="lobby-panel">
       <h2>La reunión está lista</h2>
-
       <div class="lobby-link-box">
         <span class="material-icons-round">link</span>
         <input class="lobby-link-text" id="lobby-link" type="text" readonly onclick="this.select()">
@@ -351,38 +570,33 @@
           <span class="material-icons-round">content_copy</span>
         </button>
       </div>
-
       <div class="lobby-info">
         <span class="material-icons-round">lock</span>
         Las personas que usen este vínculo deberán obtener tu permiso para unirse.
       </div>
-
       <% if (typeof user !== 'undefined' && user) { %>
       <div class="lobby-user">
         <img src="<%= user.photo || '' %>" class="lobby-user-ava"
-          onerror="this.style.display='none'"
-          alt="<%= user.name %>">
+          onerror="this.style.display='none'" alt="<%= user.name %>">
         <div>
           <div class="lobby-user-name"><%= user.name %></div>
           <div class="lobby-user-email"><%= user.email %></div>
         </div>
       </div>
       <% } %>
-
       <button class="lobby-join-btn" onclick="entrarSala()">
         <span class="material-icons-round">video_camera_front</span>
         Unirse ahora
       </button>
     </div>
-
   </div>
 </div>
-
 <div class="lobby-toast" id="lobby-toast">✅ Enlace copiado</div>
 
-<!-- ══ SALA ══ -->
+<!-- ══════════════════════════════════════════════════════
+     SALA PRINCIPAL
+══════════════════════════════════════════════════════ -->
 <div id="app" style="display:none">
-
   <header id="header">
     <div class="h-brand">
       <img src="/img/logo-ifd.png" alt="IFD" class="h-logo"
@@ -399,6 +613,11 @@
       </button>
     </div>
     <div class="h-actions">
+      <!-- Indicador grabación -->
+      <div id="rec-indicator">
+        <div class="rec-dot"></div>
+        <span id="rec-timer">00:00</span>
+      </div>
       <button class="icon-btn" onclick="openPanel('people')">
         <span class="material-icons-round">people</span>
         <span class="badge" id="badge-people">1</span>
@@ -415,7 +634,6 @@
     <div id="video-area">
       <div id="videos-grid" class="n1"></div>
     </div>
-
     <aside id="side-panel">
       <div class="panel-tabs">
         <button class="p-tab on" id="tab-people" onclick="switchTab('people')">
@@ -457,24 +675,28 @@
   </div>
 
   <footer id="controls">
-    <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()">
+    <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" title="Micrófono">
       <span class="material-icons-round" id="icon-mic">mic</span>
     </button>
-    <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()">
+    <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()" title="Cámara">
       <span class="material-icons-round" id="icon-cam">videocam</span>
     </button>
-    <button class="ctrl-btn" id="btn-screen" onclick="toggleScreen()">
+    <button class="ctrl-btn" id="btn-screen" onclick="toggleScreen()" title="Compartir pantalla">
       <span class="material-icons-round">present_to_all</span>
     </button>
+    <!-- ✅ BOTÓN GRABACIÓN -->
+    <button class="ctrl-btn" id="btn-record" onclick="toggleRecording()" title="Grabar clase">
+      <span class="material-icons-round" id="icon-record">fiber_manual_record</span>
+    </button>
     <div class="ctrl-divider"></div>
-    <button class="ctrl-btn" onclick="sendQuickReaction()">
+    <button class="ctrl-btn" onclick="sendQuickReaction()" title="Reacción">
       <span class="material-icons-round">emoji_emotions</span>
     </button>
-    <button class="ctrl-btn" onclick="openPanel('people')">
+    <button class="ctrl-btn" onclick="openPanel('people')" title="Participantes">
       <span class="material-icons-round">people</span>
     </button>
     <div class="ctrl-divider"></div>
-    <button class="ctrl-btn ctrl-leave" onclick="leaveMeeting()">
+    <button class="ctrl-btn ctrl-leave" onclick="leaveMeeting()" title="Salir">
       <span class="material-icons-round">call_end</span>
     </button>
   </footer>
@@ -493,22 +715,128 @@
   </div>
 </div>
 
+<!-- Toast global -->
+<div id="global-toast"></div>
+
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+  // ══ Variables del servidor ══
   window.ROOM_ID    = "<%- roomId %>";
-  window.IS_HOST    = "<%= typeof user !== 'undefined' && user ? 'true' : 'false' %>" === "true";
+  window.IS_HOST    = "<%= typeof user !== 'undefined' && user && user.ifdVerified ? 'true' : 'false' %>" === "true";
   window.USER_NAME  = "<%- typeof user !== 'undefined' && user ? user.name.replace(/\\/g,'\\\\').replace(/"/g,'\\"') : 'Invitado' %>";
+  window.USER_EMAIL = "<%= typeof user !== 'undefined' && user ? user.email : '' %>";
   window.USER_PHOTO = "<%= typeof user !== 'undefined' && user && user.photo ? user.photo : '' %>";
   window.APP_URL    = "<%= typeof APP_URL !== 'undefined' ? APP_URL : '' %>";
+  window.IFD_VERIFIED = <%= typeof ifdVerified !== 'undefined' ? ifdVerified : false %>;
 </script>
 <script>
-// ══════════════════════════════════════
+// ════════════════════════════════════════════════════════
+//  MÓDULO IFD - CONTRASEÑA Y VERIFICACIÓN
+// ════════════════════════════════════════════════════════
+let guestName = window.USER_NAME;
+let guestVerified = window.IFD_VERIFIED;
+
+// Al cargar: mostrar modal si no está verificado y no tiene sesión Google
+window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('lobby-link').value =
+    (window.APP_URL || location.origin) + '/sala/' + window.ROOM_ID;
+
+  if (!guestVerified) {
+    // Consultar si ya verificó antes en esta sesión
+    try {
+      const r = await fetch('/api/ifd-status');
+      const d = await r.json();
+      if (d.ifdVerified) {
+        guestVerified = true;
+        if (d.user && !window.IS_HOST) {
+          guestName = d.user.name || guestName;
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (!guestVerified) {
+    document.getElementById('ifd-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('ifd-pw-input')?.focus(), 200);
+  }
+});
+
+function ifdToggleEye() {
+  const inp = document.getElementById('ifd-pw-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function ifdVerificar() {
+  const pw = document.getElementById('ifd-pw-input').value.trim();
+  const btn = document.getElementById('ifd-verify-btn');
+  const err = document.getElementById('ifd-err');
+  const errMsg = document.getElementById('ifd-err-msg');
+  if (!pw) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ifd-spinner"></span>Verificando...';
+  err.classList.remove('show');
+
+  try {
+    const res = await fetch('/api/verificar-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      guestVerified = true;
+      // Si ya hay nombre (usuario Google), cerrar modal directo
+      if (window.USER_NAME && window.USER_NAME !== 'Invitado') {
+        document.getElementById('ifd-modal').style.display = 'none';
+      } else {
+        // Pedir nombre al invitado
+        document.getElementById('ifd-step-1').style.display = 'none';
+        document.getElementById('ifd-step-2').style.display = 'block';
+        document.getElementById('dot-1').classList.remove('active');
+        document.getElementById('dot-2').classList.add('active');
+        setTimeout(() => document.getElementById('ifd-name-input')?.focus(), 100);
+      }
+    } else {
+      errMsg.textContent = data.error || 'Contraseña incorrecta. Intentá de nuevo.';
+      err.classList.add('show');
+      document.getElementById('ifd-pw-input').value = '';
+      document.getElementById('ifd-pw-input').focus();
+    }
+  } catch(e) {
+    errMsg.textContent = 'Error de conexión. Intentá de nuevo.';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Verificar contraseña';
+  }
+}
+
+function ifdEntrarInvitado() {
+  const nombre = document.getElementById('ifd-name-input').value.trim();
+  if (!nombre || nombre.length < 2) {
+    document.getElementById('ifd-name-input').style.borderColor = '#ea4335';
+    document.getElementById('ifd-name-input').focus();
+    return;
+  }
+  guestName = nombre;
+  window.USER_NAME = nombre;
+  document.getElementById('ifd-modal').style.display = 'none';
+}
+
+function ifdVolver() {
+  document.getElementById('ifd-step-2').style.display = 'none';
+  document.getElementById('ifd-step-1').style.display = 'block';
+  document.getElementById('dot-1').classList.add('active');
+  document.getElementById('dot-2').classList.remove('active');
+}
+
+// ════════════════════════════════════════════════════════
 //  LOBBY
-// ══════════════════════════════════════
+// ════════════════════════════════════════════════════════
 let lobbyStream = null, lobbyMicOn = true, lobbyCamOn = true;
-const roomLink = (window.APP_URL || location.origin) + '/sala/' + window.ROOM_ID;
-document.getElementById('lobby-link').value = roomLink;
 
 (async () => {
   try {
@@ -536,7 +864,8 @@ function lobbyToggleCam() {
 }
 
 function lobbyCopiarLink() {
-  navigator.clipboard.writeText(roomLink).then(() => {
+  const link = (window.APP_URL || location.origin) + '/sala/' + window.ROOM_ID;
+  navigator.clipboard.writeText(link).then(() => {
     const t = document.getElementById('lobby-toast');
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
@@ -550,9 +879,9 @@ function entrarSala() {
   iniciarSala();
 }
 
-// ══════════════════════════════════════
-//  SALA
-// ══════════════════════════════════════
+// ════════════════════════════════════════════════════════
+//  SALA PRINCIPAL
+// ════════════════════════════════════════════════════════
 const socket = io();
 let miPeer = null, miStream = null, screenStream = null;
 const peers = {}, participantes = {};
@@ -572,7 +901,6 @@ async function iniciarMedia() {
       video: { width:{ideal:1280}, height:{ideal:720} },
       audio: { echoCancellation:true, noiseSuppression:true }
     });
-    // respetar estado del lobby
     state.micOn = lobbyMicOn;
     state.camOn = lobbyCamOn;
     miStream.getAudioTracks().forEach(t => t.enabled = state.micOn);
@@ -589,17 +917,30 @@ function iniciarPeerJS() {
     port: location.port || (location.protocol === 'https:' ? 443 : 80)
   });
   miPeer.on('open', id => {
-    socket.emit('join-room', window.ROOM_ID, id, window.USER_NAME, window.IS_HOST, '', window.USER_PHOTO);
+    socket.emit('join-room', window.ROOM_ID, id, window.USER_NAME, window.IS_HOST, window.USER_EMAIL, window.USER_PHOTO);
   });
   miPeer.on('call', call => {
     if (miStream) call.answer(miStream);
-    call.on('stream', s => { const p = participantes[call.peer]; agregarVideo(s, call.peer, p?.nombre||'Participante', false); });
+    call.on('stream', s => {
+      const p = participantes[call.peer];
+      agregarVideo(s, call.peer, p?.nombre || 'Participante', false);
+    });
     peers[call.peer] = call;
   });
 }
 
-socket.on('user-connected', (peerId, nombre) => {
-  participantes[peerId] = { nombre, micOn:true, camOn:true };
+// ════════════════════════════════════════════════════════
+//  SOCKET EVENTS
+// ════════════════════════════════════════════════════════
+
+// Unido a la sala
+socket.on('joined-room', (data) => {
+  // Nada extra necesario, la sala ya está iniciada
+});
+
+// Nuevo participante
+socket.on('user-connected', (peerId, nombre, email, foto) => {
+  participantes[peerId] = { nombre, email: email||'', foto: foto||'', micOn:true, camOn:true };
   if (miStream) {
     setTimeout(() => {
       const call = miPeer.call(peerId, miStream);
@@ -610,15 +951,142 @@ socket.on('user-connected', (peerId, nombre) => {
   renderParticipantes(); actualizarContador();
 });
 
-socket.on('user-disconnected', peerId => {
+// Participante desconectado
+socket.on('user-disconnected', (peerId, nombre) => {
   if (peers[peerId]) { peers[peerId].close(); delete peers[peerId]; }
   document.getElementById('tile-'+peerId)?.remove();
-  const nombre = participantes[peerId]?.nombre || 'Alguien';
+  const n = nombre || participantes[peerId]?.nombre || 'Alguien';
   delete participantes[peerId];
-  addSysMsg(nombre + ' salió');
+  addSysMsg(n + ' salió');
   renderParticipantes(); actualizarContador(); ajustarGrid();
 });
 
+// ✅ SALA DE ESPERA: esperando aprobación
+socket.on('waiting-approval', ({ message, position }) => {
+  const m = document.getElementById('waiting-modal');
+  m.classList.add('show');
+  document.getElementById('waiting-msg').textContent =
+    (message || 'Esperando aprobación del anfitrión...') + (position > 1 ? ` (${position} en espera)` : '');
+});
+
+// ✅ Admitido por el host
+socket.on('admitted', () => {
+  document.getElementById('waiting-modal').classList.remove('show');
+  showToast('✅ ¡Fuiste admitido a la reunión!', '#1e8e3e');
+});
+
+// ✅ Rechazado
+socket.on('rejected', (msg) => {
+  document.getElementById('waiting-modal').classList.remove('show');
+  showToast('❌ ' + (msg || 'No fuiste admitido.'), '#ea4335');
+  setTimeout(() => location.href = '/', 3000);
+});
+
+// ✅ Expulsado
+socket.on('kicked', (msg) => {
+  showToast('⛔ ' + (msg || 'Fuiste expulsado.'), '#ea4335');
+  setTimeout(() => location.href = '/', 3000);
+});
+
+// ✅ Silenciado por el host
+socket.on('force-muted', () => {
+  if (miStream) miStream.getAudioTracks().forEach(t => t.enabled = false);
+  state.micOn = false;
+  document.getElementById('btn-mic').classList.add('muted');
+  document.getElementById('icon-mic').textContent = 'mic_off';
+  showToast('🔇 El anfitrión te silenció', '#ea4335');
+});
+
+// ✅ HOST: alguien esperando
+socket.on('user-waiting', ({ socketId, userName: wName, userEmail: wEmail, userPhoto: wPhoto }) => {
+  if (!window.IS_HOST) return;
+  agregarSolicitud(socketId, wName, wEmail, wPhoto);
+  showToast('🙋 ' + wName + ' quiere entrar', '#f9ab00');
+});
+
+// ✅ HOST: lista actualizada de espera
+socket.on('waiting-list', (list) => {
+  if (!window.IS_HOST) return;
+  const panel = document.getElementById('requests-panel');
+  const reqList = document.getElementById('req-list');
+  if (list.length === 0) { panel.classList.remove('show'); reqList.innerHTML = ''; return; }
+  reqList.innerHTML = '';
+  list.forEach(u => agregarSolicitud(u.socketId, u.userName, u.userEmail, u.userPhoto));
+});
+
+// El host se fue
+socket.on('host-left', () => {
+  showToast('ℹ️ El anfitrión abandonó la reunión', '#f9ab00');
+});
+
+// Grabación
+socket.on('user-recording-started', ({ userName: rName }) => {
+  showToast('🎥 ' + rName + ' está grabando la clase', '#f9ab00');
+});
+socket.on('user-recording-stopped', ({ userName: rName }) => {
+  showToast('⏹️ ' + rName + ' detuvo la grabación', '#9aa0a6');
+});
+
+// Chat
+socket.on('receive-message', data => {
+  if (data.nombre !== window.USER_NAME) { renderMensaje({...data, propio:false}); bumpUnread(); }
+});
+socket.on('receive-file', data => {
+  if (data.nombre !== window.USER_NAME) { renderMensaje({...data, propio:false}); bumpUnread(); }
+});
+
+// ════════════════════════════════════════════════════════
+//  SOLICITUDES HOST
+// ════════════════════════════════════════════════════════
+function agregarSolicitud(socketId, nombre, email, foto) {
+  const panel = document.getElementById('requests-panel');
+  const reqList = document.getElementById('req-list');
+  panel.classList.add('show');
+
+  // Evitar duplicados
+  if (document.getElementById('req-' + socketId)) return;
+
+  const ini = (nombre || '?')[0].toUpperCase();
+  const item = document.createElement('div');
+  item.className = 'req-item';
+  item.id = 'req-' + socketId;
+  item.innerHTML = `
+    <div class="req-ava">
+      ${foto ? `<img src="${foto}" onerror="this.parentNode.textContent='${ini}'" />` : ini}
+    </div>
+    <div class="req-info">
+      <div class="req-name">${escHtml(nombre || 'Invitado')}</div>
+      <div class="req-email">${escHtml(email || 'Invitado')}</div>
+    </div>
+    <div class="req-actions">
+      <button class="req-admit" onclick="admitirUsuario('${socketId}')">✓ Admitir</button>
+      <button class="req-reject" onclick="rechazarUsuario('${socketId}')">✗</button>
+    </div>`;
+  reqList.appendChild(item);
+  actualizarContadorSolicitudes();
+}
+
+function admitirUsuario(socketId) {
+  socket.emit('admit-user', socketId, window.ROOM_ID);
+  document.getElementById('req-' + socketId)?.remove();
+  actualizarContadorSolicitudes();
+}
+
+function rechazarUsuario(socketId) {
+  socket.emit('reject-user', socketId, window.ROOM_ID);
+  document.getElementById('req-' + socketId)?.remove();
+  actualizarContadorSolicitudes();
+}
+
+function actualizarContadorSolicitudes() {
+  const count = document.getElementById('req-list').children.length;
+  document.getElementById('req-count').textContent = count;
+  if (count === 0) document.getElementById('requests-panel').classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════
+//  VIDEO
+// ════════════════════════════════════════════════════════
 function agregarVideo(stream, id, nombre, esSelf) {
   let tile = document.getElementById('tile-'+id);
   if (tile) { tile.querySelector('video').srcObject = stream; return; }
@@ -642,6 +1110,9 @@ function ajustarGrid() {
   g.className = 'n' + Math.min(g.children.length, 6);
 }
 
+// ════════════════════════════════════════════════════════
+//  CONTROLES MEDIA
+// ════════════════════════════════════════════════════════
 function toggleMic() {
   if (!miStream) return;
   state.micOn = !state.micOn;
@@ -683,26 +1154,135 @@ async function toggleScreen() {
   } catch(e) {}
 }
 
-function sendQuickReaction() {
-  const emojis = ['👍','❤️','😂','👏','🔥','🎉','😮'];
-  const e = emojis[Math.floor(Math.random()*emojis.length)];
-  const el = document.createElement('div');
-  el.textContent = e;
-  el.style.cssText = 'position:fixed;bottom:90px;left:'+(20+Math.random()*60)+'%;font-size:32px;z-index:999;pointer-events:none;transition:all 2s ease';
-  document.body.appendChild(el);
-  setTimeout(()=>{el.style.transform='translateY(-120px)';el.style.opacity='0';},50);
-  setTimeout(()=>el.remove(),2100);
+// ════════════════════════════════════════════════════════
+//  ✅ GRABACIÓN
+// ════════════════════════════════════════════════════════
+let mediaRecorder = null, recordedChunks = [], isRecording = false;
+let recStartTime = null, recTimerInterval = null;
+
+async function toggleRecording() {
+  if (isRecording) {
+    detenerGrabacion();
+  } else {
+    await iniciarGrabacion();
+  }
 }
 
-function leaveMeeting() {
-  if (!confirm('¿Salir de la reunión?')) return;
-  Object.values(peers).forEach(c=>c.close());
-  miStream?.getTracks().forEach(t=>t.stop());
-  screenStream?.getTracks().forEach(t=>t.stop());
-  socket.disconnect(); location.href='/';
+async function iniciarGrabacion() {
+  try {
+    // Capturar pantalla
+    let displayStream;
+    try {
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:30} },
+        audio: true
+      });
+    } catch(e) { console.warn('Sin pantalla, grabando solo audio'); }
+
+    // Mezclar audio
+    const audioCtx = new AudioContext();
+    const dest = audioCtx.createMediaStreamDestination();
+    if (displayStream?.getAudioTracks().length > 0) {
+      audioCtx.createMediaStreamSource(displayStream).connect(dest);
+    }
+    if (miStream?.getAudioTracks().length > 0) {
+      audioCtx.createMediaStreamSource(miStream).connect(dest);
+    }
+
+    // Stream combinado
+    const tracks = [];
+    if (displayStream?.getVideoTracks().length > 0) tracks.push(...displayStream.getVideoTracks());
+    tracks.push(...dest.stream.getAudioTracks());
+    const combined = new MediaStream(tracks);
+
+    // Elegir codec
+    const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']
+      .find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(combined, { mimeType, videoBitsPerSecond: 2500000 });
+    mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      guardarGrabacion();
+      combined.getTracks().forEach(t => t.stop());
+      if (displayStream) displayStream.getTracks().forEach(t => t.stop());
+    };
+    mediaRecorder.start(1000);
+
+    isRecording = true;
+    recStartTime = Date.now();
+    document.getElementById('btn-record').classList.add('recording');
+    document.getElementById('icon-record').textContent = 'stop';
+    document.getElementById('rec-indicator').classList.add('show');
+
+    recTimerInterval = setInterval(() => {
+      const s = Math.round((Date.now() - recStartTime) / 1000);
+      const m = Math.floor(s / 60).toString().padStart(2,'0');
+      const ss = (s % 60).toString().padStart(2,'0');
+      document.getElementById('rec-timer').textContent = m + ':' + ss;
+    }, 1000);
+
+    socket.emit('recording-started', { roomId: window.ROOM_ID, userName: window.USER_NAME });
+    showToast('🎥 Grabación iniciada', '#1e8e3e');
+
+    if (displayStream) {
+      displayStream.getVideoTracks()[0].addEventListener('ended', () => {
+        if (isRecording) detenerGrabacion();
+      });
+    }
+
+  } catch(err) {
+    console.error('Error grabación:', err);
+    showToast('❌ No se pudo iniciar la grabación', '#ea4335');
+  }
 }
 
-// ══ PANEL ══
+function detenerGrabacion() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  isRecording = false;
+  clearInterval(recTimerInterval);
+  document.getElementById('btn-record').classList.remove('recording');
+  document.getElementById('icon-record').textContent = 'fiber_manual_record';
+  document.getElementById('rec-indicator').classList.remove('show');
+  document.getElementById('rec-timer').textContent = '00:00';
+  socket.emit('recording-stopped', { roomId: window.ROOM_ID, userName: window.USER_NAME });
+}
+
+async function guardarGrabacion() {
+  if (!recordedChunks.length) return;
+  const blob = new Blob(recordedChunks, { type: 'video/webm' });
+  const duration = Math.round((Date.now() - recStartTime) / 1000);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-PY').replace(/\//g, '-');
+  const timeStr = now.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}).replace(':','h');
+  const filename = `IFD-Clase-${dateStr}-${timeStr}.webm`;
+  const mb = (blob.size/1024/1024).toFixed(1);
+
+  showToast(`💾 Guardando grabación (${mb}MB)...`, '#1565c0');
+
+  // Intentar subir al servidor
+  try {
+    const fd = new FormData();
+    fd.append('recording', blob, filename);
+    const res = await fetch('/upload-recording', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`✅ Grabación guardada: ${data.filename}`, '#1e8e3e', 8000);
+      return;
+    }
+  } catch(e) { console.warn('Servidor no disponible, descargando localmente'); }
+
+  // Fallback: descargar al PC
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  showToast(`✅ Grabación descargada: ${filename}`, '#1e8e3e', 8000);
+}
+
+// ════════════════════════════════════════════════════════
+//  PANEL
+// ════════════════════════════════════════════════════════
 let panelOpen=false, activeTab='people', unreadChat=0;
 
 function openPanel(tab) {
@@ -726,8 +1306,8 @@ function switchTab(tab) {
 
 function renderParticipantes() {
   const list = document.getElementById('p-list');
-  const todos = [{nombre:window.USER_NAME,role:'Tú',micOn:state.micOn,camOn:state.camOn}]
-    .concat(Object.values(participantes).map(p=>({nombre:p.nombre,micOn:p.micOn??true,camOn:p.camOn??true})));
+  const todos = [{nombre:window.USER_NAME, role:'Tú', micOn:state.micOn, camOn:state.camOn}]
+    .concat(Object.values(participantes).map(p=>({nombre:p.nombre, micOn:p.micOn??true, camOn:p.camOn??true})));
   list.innerHTML = todos.map(p=>{
     const ini=p.nombre.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
     return `<div class="p-item">
@@ -744,7 +1324,9 @@ function actualizarContador() {
   document.getElementById('badge-people').textContent = Object.keys(participantes).length+1;
 }
 
-// ══ CHAT ══
+// ════════════════════════════════════════════════════════
+//  CHAT
+// ════════════════════════════════════════════════════════
 let pendingFiles=[], lastDateShown='';
 
 function chatKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
@@ -803,9 +1385,6 @@ async function uploadAndSend(file){
   }catch(err){console.error(err);}
 }
 
-socket.on('receive-message',data=>{if(data.nombre!==window.USER_NAME){renderMensaje({...data,propio:false});bumpUnread();}});
-socket.on('receive-file',   data=>{if(data.nombre!==window.USER_NAME){renderMensaje({...data,propio:false});bumpUnread();}});
-
 function bumpUnread(){
   if(activeTab!=='chat'||!panelOpen){
     unreadChat++;
@@ -854,6 +1433,29 @@ function addSysMsg(txt){
   c.appendChild(d);c.scrollTop=c.scrollHeight;
 }
 
+// ════════════════════════════════════════════════════════
+//  OTRAS FUNCIONES
+// ════════════════════════════════════════════════════════
+function sendQuickReaction() {
+  const emojis=['👍','❤️','😂','👏','🔥','🎉','😮'];
+  const e=emojis[Math.floor(Math.random()*emojis.length)];
+  const el=document.createElement('div');
+  el.textContent=e;
+  el.style.cssText='position:fixed;bottom:90px;left:'+(20+Math.random()*60)+'%;font-size:32px;z-index:999;pointer-events:none;transition:all 2s ease';
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.transform='translateY(-120px)';el.style.opacity='0';},50);
+  setTimeout(()=>el.remove(),2100);
+}
+
+function leaveMeeting() {
+  if (isRecording) detenerGrabacion();
+  if (!confirm('¿Salir de la reunión?')) return;
+  Object.values(peers).forEach(c=>c.close());
+  miStream?.getTracks().forEach(t=>t.stop());
+  screenStream?.getTracks().forEach(t=>t.stop());
+  socket.disconnect(); location.href='/';
+}
+
 function openLightbox(url,name){
   document.getElementById('lightbox-img').src=url;
   const dl=document.getElementById('lightbox-dl');dl.href=url;dl.download=name;
@@ -862,9 +1464,33 @@ function openLightbox(url,name){
 function closeLightbox(){document.getElementById('lightbox').style.display='none';document.body.style.overflow='';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
 
-// helpers
-function copyLink(){navigator.clipboard.writeText(location.href.split('?')[0]).then(()=>alert('✅ Enlace copiado'));}
-function iniciarReloj(){const u=()=>{const n=new Date();document.getElementById('room-time').textContent=n.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});};u();setInterval(u,30000);}
+function copyLink(){
+  navigator.clipboard.writeText((window.APP_URL||location.origin)+'/sala/'+window.ROOM_ID)
+    .then(()=>showToast('✅ Enlace copiado','#1e8e3e'));
+}
+
+function iniciarReloj(){
+  const u=()=>{const n=new Date();document.getElementById('room-time').textContent=n.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});};
+  u();setInterval(u,30000);
+}
+
+// ════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════
+let toastTimeout;
+function showToast(msg, color='#323232', duration=4000) {
+  const t = document.getElementById('global-toast');
+  t.textContent = msg;
+  t.style.background = color;
+  t.style.color = 'white';
+  t.classList.add('show');
+  clearTimeout(toastTimeout);
+  if (duration > 0) toastTimeout = setTimeout(()=>t.classList.remove('show'), duration);
+}
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
 function escHtml(t){if(!t)return'';return t.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 function escAttr(t){return(t||'').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
 function formatSize(b){if(!b)return'';if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}

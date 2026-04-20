@@ -5,7 +5,7 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const app = express();
 const server = require("http").createServer(app);
-const io = require("socket.io")(server, { 
+const io = require("socket.io")(server, {
   maxHttpBufferSize: 1e8,
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
@@ -20,27 +20,26 @@ const PORT = process.env.PORT || 3000;
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
+// ✅ Contraseña institucional IFD
+const IFD_PASSWORD = process.env.IFD_PASSWORD || "IFD12345SANTAROSAMISIONES";
+
 // ================= EXPRESS CONFIG =================
 app.set("view engine", "ejs");
 app.use(express.static("public", { maxAge: '1d' }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// ================= SESIÓN - CONFIGURACIÓN DINÁMICA =================
-// ✅ Esto arregla el problema de login en localhost vs producción
+// ================= SESIÓN =================
 app.use(session({
   secret: process.env.SESSION_SECRET || "ifd_meet_secret_2024_fallback",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    // 🔐 secure: true SOLO en producción (HTTPS)
     secure: NODE_ENV === "production",
-    // 🔗 sameSite: 'none' para producción, 'lax' para desarrollo
     sameSite: NODE_ENV === "production" ? "none" : "lax",
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    maxAge: 24 * 60 * 60 * 1000
   },
-  // 🔄 proxy: true para que Express confíe en los headers de Render
   proxy: true
 }));
 
@@ -53,59 +52,82 @@ app.use(passport.session());
 // ================= GOOGLE OAUTH STRATEGY =================
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${APP_URL}/auth/google/callback`,
-      // ✅ Agregamos passReqToCallback para mejor debugging
-      passReqToCallback: true
-    },
-    function(request, accessToken, refreshToken, profile, cb) {
-      // ✅ Manejo seguro de datos opcionales de Google
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: `${APP_URL}/auth/google/callback`,
+    passReqToCallback: true
+  },
+    function (request, accessToken, refreshToken, profile, cb) {
       const user = {
         id: profile.id,
         name: profile.displayName,
         email: profile.emails?.[0]?.value || "sin-email@gmail.com",
         photo: profile.photos?.[0]?.value || "",
-        accessToken: accessToken
+        accessToken: accessToken,
+        ifdVerified: false // se setea en true si puso la contraseña correcta
       };
       return cb(null, user);
     }
   ));
 }
 
-// ================= SERIALIZE/DESERIALIZE USER =================
-passport.serializeUser((user, cb) => {
-  cb(null, user);
-});
-
-passport.deserializeUser((user, cb) => {
-  cb(null, user);
-});
+passport.serializeUser((user, cb) => cb(null, user));
+passport.deserializeUser((user, cb) => cb(null, user));
 
 // ================= RUTAS DE AUTENTICACIÓN =================
 app.get('/auth/google',
-  passport.authenticate('google', { 
+  passport.authenticate('google', {
     scope: ['profile', 'email'],
     prompt: 'select_account',
-    // ✅ Agregamos accessType para refresh token si lo necesitás después
     accessType: 'offline'
   })
 );
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { 
+  passport.authenticate('google', {
     failureRedirect: '/',
-    successRedirect: '/'
+    // Después del login de Google, redirigir a verificación IFD
+    successRedirect: '/verificar-ifd'
   })
 );
 
+// ✅ PÁGINA DE VERIFICACIÓN CONTRASEÑA IFD
+// Muestra el modal de contraseña después del login con Google
+app.get('/verificar-ifd', (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect('/');
+
+  // Si ya verificó, ir directo al inicio
+  if (req.user.ifdVerified) return res.redirect('/');
+
+  // Renderizar página de verificación
+  res.render('verificar-ifd', {
+    user: req.user,
+    error: req.flash('ifd-error'),
+    APP_URL
+  });
+});
+
+// ✅ POST: verificar contraseña IFD
+app.post('/verificar-ifd', (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect('/');
+
+  const { password } = req.body;
+
+  if (password === IFD_PASSWORD) {
+    // Marcar usuario como verificado en la sesión
+    req.user.ifdVerified = true;
+    req.session.save(() => {
+      res.redirect('/');
+    });
+  } else {
+    req.flash('ifd-error', 'Contraseña incorrecta. Intentá de nuevo.');
+    res.redirect('/verificar-ifd');
+  }
+});
+
 app.get('/logout', (req, res, next) => {
   req.logout((err) => {
-    if (err) {
-      console.error('Logout error:', err);
-      return next(err);
-    }
-    // ✅ Destruir sesión completamente
+    if (err) return next(err);
     req.session.destroy((err) => {
       if (err) console.error('Session destroy error:', err);
       res.clearCookie('connect.sid');
@@ -114,25 +136,54 @@ app.get('/logout', (req, res, next) => {
   });
 });
 
-// ================= PEERJS PARA WEBRTC =================
-const peerServer = ExpressPeerServer(server, { 
-  debug: false, 
-  path: "/peerjs", 
+// ✅ API: verificar si el usuario actual está verificado por IFD
+app.get('/api/ifd-status', (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.json({ authenticated: false, ifdVerified: false });
+  }
+  res.json({
+    authenticated: true,
+    ifdVerified: req.user.ifdVerified === true,
+    user: {
+      name: req.user.name,
+      email: req.user.email,
+      photo: req.user.photo
+    }
+  });
+});
+
+// ✅ API: verificar contraseña IFD (para invitados sin login, via AJAX)
+app.post('/api/verificar-password', (req, res) => {
+  const { password } = req.body;
+  if (password === IFD_PASSWORD) {
+    // Guardar en sesión que verificó sin login
+    req.session.ifdGuestVerified = true;
+    req.session.save(() => {
+      res.json({ ok: true });
+    });
+  } else {
+    res.json({ ok: false, error: 'Contraseña incorrecta' });
+  }
+});
+
+// ================= PEERJS =================
+const peerServer = ExpressPeerServer(server, {
+  debug: false,
+  path: "/peerjs",
   allow_discovery: true,
-  // ✅ Configuración adicional para producción
   proxied: true
 });
 app.use("/peerjs", peerServer);
 
-// ================= CREAR CARPETAS NECESARIAS =================
-["public/uploads", "public/img"].forEach(dir => {
+// ================= CREAR CARPETAS =================
+["public/uploads", "public/img", "public/recordings"].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
     console.log(`📁 Carpeta creada: ${dir}`);
   }
 });
 
-// ================= CONFIGURACIÓN MULTER (UPLOADS) =================
+// ================= MULTER =================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "public/uploads/"),
   filename: (req, file, cb) => {
@@ -141,9 +192,9 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
-  storage, 
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max
+const upload = multer({
+  storage,
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|mp4|mp3|zip|rar/;
     const ext = allowed.test(path.extname(file.originalname).toLowerCase());
@@ -153,14 +204,24 @@ const upload = multer({
   }
 });
 
+// ✅ MULTER para grabaciones (webm/mp4)
+const recordingStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "public/recordings/"),
+  filename: (req, file, cb) => {
+    const date = new Date().toISOString().replace(/[:.]/g, '-');
+    cb(null, `grabacion-${date}.webm`);
+  }
+});
+
+const uploadRecording = multer({
+  storage: recordingStorage,
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 } // 2GB max para grabaciones
+});
+
 // ================= ESTADO DEL SERVIDOR =================
 const rooms = {};
 const waitingRooms = {};
-const serverStatus = { 
-  maintenance: false, 
-  message: "", 
-  updatedAt: null 
-};
+const serverStatus = { maintenance: false, message: "", updatedAt: null };
 const ADMIN_PASS = process.env.ADMIN_PASS || "ifd2024";
 
 // ================= RUTAS ADMIN =================
@@ -170,18 +231,13 @@ app.get("/admin", (req, res) => {
 
 app.post("/admin/status", (req, res) => {
   const { password, maintenance, message } = req.body;
-  
   if (password !== ADMIN_PASS) {
     return res.status(403).json({ ok: false, error: "Contraseña incorrecta" });
   }
-  
   serverStatus.maintenance = maintenance === "true";
   serverStatus.message = message || "";
   serverStatus.updatedAt = new Date().toISOString();
-  
-  // Notificar a todos los clientes conectados
   io.emit("server-status", serverStatus);
-  
   res.json({ ok: true, status: serverStatus });
 });
 
@@ -189,12 +245,9 @@ app.get("/api/status", (req, res) => {
   res.json(serverStatus);
 });
 
-// ================= UPLOAD DE ARCHIVOS =================
+// ================= UPLOAD ARCHIVOS =================
 app.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ ok: false, error: "No file uploaded" });
-  }
-  
+  if (!req.file) return res.status(400).json({ ok: false, error: "No file uploaded" });
   res.json({
     ok: true,
     url: `/uploads/${req.file.filename}`,
@@ -205,9 +258,47 @@ app.post("/upload", upload.single("file"), (req, res) => {
   });
 });
 
+// ✅ UPLOAD GRABACIÓN - guarda en public/recordings/
+app.post("/upload-recording", uploadRecording.single("recording"), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: "No recording uploaded" });
+
+  const recordingInfo = {
+    ok: true,
+    filename: req.file.filename,
+    url: `/recordings/${req.file.filename}`,
+    size: req.file.size,
+    savedAt: new Date().toISOString(),
+    // Ruta absoluta del servidor (útil para referencia)
+    serverPath: path.resolve(req.file.path)
+  };
+
+  console.log(`🎥 Grabación guardada: ${req.file.filename} (${(req.file.size / 1024 / 1024).toFixed(2)}MB)`);
+  res.json(recordingInfo);
+});
+
+// ✅ LISTAR GRABACIONES
+app.get("/api/recordings", (req, res) => {
+  const recordingsDir = path.join(__dirname, "public/recordings");
+  try {
+    const files = fs.readdirSync(recordingsDir)
+      .filter(f => f.endsWith('.webm') || f.endsWith('.mp4'))
+      .map(f => ({
+        name: f,
+        url: `/recordings/${f}`,
+        size: fs.statSync(path.join(recordingsDir, f)).size,
+        date: fs.statSync(path.join(recordingsDir, f)).mtime
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json({ ok: true, recordings: files });
+  } catch (e) {
+    res.json({ ok: true, recordings: [] });
+  }
+});
+
 // ================= RUTAS PRINCIPALES =================
 app.get("/", (req, res) => {
-  res.render("landing", { 
+  res.render("landing", {
     status: serverStatus,
     user: req.isAuthenticated() ? req.user : null,
     APP_URL
@@ -215,103 +306,86 @@ app.get("/", (req, res) => {
 });
 
 app.get("/nueva", (req, res) => {
-  if (!req.isAuthenticated()) {
-    return res.redirect('/');
-  }
+  if (!req.isAuthenticated()) return res.redirect('/');
+  // Verificar que esté verificado por IFD
+  if (!req.user.ifdVerified) return res.redirect('/verificar-ifd');
   res.redirect(`/sala/${uuidV4()}`);
 });
 
 app.get("/sala/:room", (req, res) => {
-  // Si está en mantenimiento y no tiene bypass, mostrar mensaje
   if (serverStatus.maintenance && !req.query.bypass) {
     return res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Mantenimiento</title>
-      <style>
-        body{font-family:sans-serif;background:#f8f9fa;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
-        .card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.1);text-align:center;max-width:400px}
-        h1{color:#1f1f1f;font-size:24px;margin:0 0 12px}
-        p{color:#5f6368}
-      </style></head><body>
-      <div class="card"><h1>⚠️ En mantenimiento</h1><p>${serverStatus.message||"Volvemos pronto."}</p></div></body></html>`);
+      <style>body{font-family:sans-serif;background:#f8f9fa;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+      .card{background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.1);text-align:center;max-width:400px}
+      h1{color:#1f1f1f;font-size:24px;margin:0 0 12px}p{color:#5f6368}</style></head><body>
+      <div class="card"><h1>⚠️ En mantenimiento</h1><p>${serverStatus.message || "Volvemos pronto."}</p></div></body></html>`);
   }
-  
-  res.render("room", { 
-    roomId: req.params.room, 
-    user: req.isAuthenticated() ? req.user : null, 
-    APP_URL 
+
+  res.render("room", {
+    roomId: req.params.room,
+    user: req.isAuthenticated() ? req.user : null,
+    ifdVerified: req.isAuthenticated() ? (req.user.ifdVerified === true) : (req.session.ifdGuestVerified === true),
+    APP_URL
   });
 });
 
-// ================= SOCKET.IO - LÓGICA DE SALAS =================
+// ================= SOCKET.IO =================
 io.on("connection", (socket) => {
-  
-  // Unirse a una sala
+
   socket.on("join-room", (roomId, userId, userName, isHost, userEmail, userPhoto) => {
-    
-    // Crear sala si no existe
     if (!rooms[roomId]) {
-      rooms[roomId] = { 
-        host: socket.id, 
-        hostUserId: userId, 
-        participants: {}, 
-        createdAt: Date.now() 
+      rooms[roomId] = {
+        host: socket.id,
+        hostUserId: userId,
+        participants: {},
+        createdAt: Date.now()
       };
     }
-    
-    // Inicializar lista de espera si no existe
+
     if (!waitingRooms[roomId]) {
       waitingRooms[roomId] = [];
     }
-    
-    // Registrar participante
-    rooms[roomId].participants[socket.id] = { 
-      userId, 
-      userName, 
-      userEmail, 
-      userPhoto, 
-      socketId: socket.id, 
-      joinedAt: Date.now() 
+
+    rooms[roomId].participants[socket.id] = {
+      userId, userName, userEmail, userPhoto,
+      socketId: socket.id, joinedAt: Date.now()
     };
 
-    // Si es host o el mismo usuario que creó la sala
     if (isHost || rooms[roomId].hostUserId === userId) {
       rooms[roomId].host = socket.id;
       rooms[roomId].hostUserId = userId;
-      
+
       socket.join(roomId);
-      
-      socket.emit("joined-room", { 
-        asHost: true, 
-        participants: Object.values(rooms[roomId].participants), 
-        user: { name: userName, email: userEmail, photo: userPhoto } 
+      socket.emit("joined-room", {
+        asHost: true,
+        participants: Object.values(rooms[roomId].participants),
+        user: { name: userName, email: userEmail, photo: userPhoto }
       });
-      
       socket.to(roomId).emit("user-connected", userId, userName, userEmail, userPhoto);
       socket.emit("waiting-list", waitingRooms[roomId]);
       return;
     }
 
-    // Si no es host, agregar a lista de espera
-    const waitData = { 
-      socketId: socket.id, 
-      userId, 
-      userName, 
-      userEmail, 
-      userPhoto, 
-      requestedAt: Date.now() 
+    // Agregar a lista de espera
+    const waitData = {
+      socketId: socket.id,
+      userId, userName, userEmail, userPhoto,
+      requestedAt: Date.now()
     };
-    
+
     waitingRooms[roomId].push(waitData);
-    
+
     // Notificar al host
-    io.to(rooms[roomId].host).emit("user-waiting", { 
-      ...waitData, 
-      totalWaiting: waitingRooms[roomId].length 
-    });
-    
-    // Notificar al usuario que está esperando
-    socket.emit("waiting-approval", { 
-      message: "Esperando que el anfitrión te admita...", 
-      position: waitingRooms[roomId].length 
+    if (rooms[roomId].host) {
+      io.to(rooms[roomId].host).emit("user-waiting", {
+        ...waitData,
+        totalWaiting: waitingRooms[roomId].length
+      });
+    }
+
+    socket.emit("waiting-approval", {
+      message: "Esperando que el anfitrión te admita...",
+      position: waitingRooms[roomId].length
     });
   });
 
@@ -319,43 +393,47 @@ io.on("connection", (socket) => {
   socket.on("admit-user", (targetSocketId, roomId) => {
     const room = rooms[roomId];
     if (!room || room.host !== socket.id) return;
-    
+
     const idx = waitingRooms[roomId]?.findIndex(u => u.socketId === targetSocketId);
-    if (idx === -1) return;
-    
+    if (idx === -1 || idx === undefined) return;
+
     const [user] = waitingRooms[roomId].splice(idx, 1);
     const targetSocket = io.sockets.sockets.get(targetSocketId);
-    
+
     if (targetSocket) {
       targetSocket.join(roomId);
       targetSocket.emit("admitted");
-      targetSocket.emit("joined-room", { 
-        asHost: false, 
-        user: { name: user.userName, email: user.userEmail, photo: user.userPhoto } 
+      targetSocket.emit("joined-room", {
+        asHost: false,
+        user: { name: user.userName, email: user.userEmail, photo: user.userPhoto }
       });
       socket.to(roomId).emit("user-connected", user.userId, user.userName, user.userEmail, user.userPhoto);
     }
+
+    // Actualizar lista de espera para el host
+    socket.emit("waiting-list", waitingRooms[roomId]);
   });
 
   // Host rechaza usuario
   socket.on("reject-user", (targetSocketId, roomId) => {
     waitingRooms[roomId] = waitingRooms[roomId]?.filter(u => u.socketId !== targetSocketId) || [];
     io.to(targetSocketId).emit("rejected", "El anfitrión no admitió tu solicitud.");
+    socket.emit("waiting-list", waitingRooms[roomId]);
   });
 
   // Host expulsa usuario
   socket.on("kick-user", (targetSocketId, roomId) => {
     const room = rooms[roomId];
     if (!room || room.host !== socket.id) return;
-    
+
     io.to(targetSocketId).emit("kicked", "Fuiste expulsado de la reunión.");
-    
+
     const ts = io.sockets.sockets.get(targetSocketId);
-    if (ts) { 
-      ts.leave(roomId); 
-      delete room.participants[targetSocketId]; 
+    if (ts) {
+      ts.leave(roomId);
+      delete room.participants[targetSocketId];
     }
-    
+
     socket.to(roomId).emit("user-disconnected", targetSocketId);
   });
 
@@ -365,35 +443,34 @@ io.on("connection", (socket) => {
     io.to(targetSocketId).emit("force-muted");
   });
 
-  // Enviar mensaje de chat
+  // Chat
   socket.on("send-message", (data) => {
-    io.to(data.roomId).emit("receive-message", { 
-      ...data, 
-      time: new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" }), 
-      timestamp: Date.now() 
+    io.to(data.roomId).emit("receive-message", {
+      ...data,
+      time: new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" }),
+      timestamp: Date.now()
     });
   });
 
-  // Compartir archivo
+  // Archivo compartido
   socket.on("share-file", (data) => {
-    io.to(data.roomId).emit("receive-file", { 
-      ...data, 
-      time: new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" }), 
-      timestamp: Date.now() 
+    io.to(data.roomId).emit("receive-file", {
+      ...data,
+      time: new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" }),
+      timestamp: Date.now()
     });
   });
 
-  // Compartir pantalla - inicio
+  // Pantalla compartida
   socket.on("screen-share-start", (data) => {
     socket.to(data.roomId).emit("user-screen-share", data.userId, true);
   });
-  
-  // Compartir pantalla - fin
+
   socket.on("screen-share-stop", (data) => {
     socket.to(data.roomId).emit("user-screen-share", data.userId, false);
   });
 
-  // Estado de mic/cam
+  // Estado mic/cam
   socket.on("media-state", (data) => {
     socket.to(data.roomId).emit("user-media-state", data.userId, data.state);
   });
@@ -403,32 +480,45 @@ io.on("connection", (socket) => {
     io.to(data.roomId).emit("user-reaction", data.userName, data.emoji);
   });
 
+  // ✅ Grabación iniciada (notificar a todos)
+  socket.on("recording-started", (data) => {
+    socket.to(data.roomId).emit("user-recording-started", {
+      userName: data.userName,
+      roomId: data.roomId
+    });
+  });
+
+  // ✅ Grabación detenida
+  socket.on("recording-stopped", (data) => {
+    socket.to(data.roomId).emit("user-recording-stopped", {
+      userName: data.userName,
+      roomId: data.roomId
+    });
+  });
+
   // Desconexión
   socket.on("disconnect", () => {
     for (const roomId in rooms) {
       const room = rooms[roomId];
-      
+
       if (room.participants[socket.id]) {
         const user = room.participants[socket.id];
-        
+
         socket.to(roomId).emit("user-disconnected", user.userId, user.userName);
         delete room.participants[socket.id];
-        
-        // Si el host se fue, notificar
+
         if (room.host === socket.id) {
           socket.to(roomId).emit("host-left");
         }
-        
-        // Si no queda nadie, limpiar sala
-        if (Object.keys(room.participants).length === 0) { 
-          delete rooms[roomId]; 
-          delete waitingRooms[roomId]; 
+
+        if (Object.keys(room.participants).length === 0) {
+          delete rooms[roomId];
+          delete waitingRooms[roomId];
         }
         break;
       }
     }
-    
-    // Limpiar de listas de espera
+
     for (const roomId in waitingRooms) {
       waitingRooms[roomId] = waitingRooms[roomId]?.filter(u => u.socketId !== socket.id) || [];
     }
@@ -436,14 +526,10 @@ io.on("connection", (socket) => {
 });
 
 // ================= MANEJO DE ERRORES =================
-
-// 404 - Página no encontrada
 app.use((req, res) => {
-  console.log(`❌ 404: ${req.path}`);
   res.status(404).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>404</title></head><body style="font-family:sans-serif;text-align:center;padding:50px"><h1>404 - Página no encontrada</h1><p><a href="/">← Volver al inicio</a></p></body></html>');
 });
 
-// 500 - Error del servidor
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err);
   res.status(500).send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>500</title></head><body style="font-family:sans-serif;text-align:center;padding:50px"><h1>500 - Error del servidor</h1><p><a href="/">← Volver al inicio</a></p></body></html>');
@@ -453,13 +539,13 @@ app.use((err, req, res, next) => {
 server.listen(PORT, () => {
   console.log(`\n✅ IFD Meet corriendo en ${APP_URL}`);
   console.log(`🔧 Admin: ${APP_URL}/admin`);
-  console.log(`🔑 Pass: ${ADMIN_PASS}`);
+  console.log(`🔑 Pass Admin: ${ADMIN_PASS}`);
+  console.log(`🔐 Pass IFD: ${IFD_PASSWORD}`);
   console.log(`📧 OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅' : '❌'}`);
   console.log(`🌐 Entorno: ${NODE_ENV}`);
-  console.log(`🔐 Cookie secure: ${NODE_ENV === "production" ? 'Sí (HTTPS)' : 'No (HTTP)'}\n`);
+  console.log(`🎥 Grabaciones: ${path.resolve('public/recordings')}\n`);
 });
 
-// ================= GRACEFUL SHUTDOWN =================
 process.on('SIGINT', () => {
   console.log('\n🛑 Cerrando servidor...');
   server.close(() => {
