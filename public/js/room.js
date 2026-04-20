@@ -1,464 +1,629 @@
+/**
+ * IFD Meet - Sala de Videoconferencia
+ * Versión corregida - Host entra directo
+ */
+
 const socket = io();
 const urlParams = new URLSearchParams(location.search);
 const IS_HOST = urlParams.get("host") === "1";
+const ROOM_ID = typeof window.ROOM_ID !== 'undefined' ? window.ROOM_ID : location.pathname.split('/').pop().split('?')[0];
 
-// Nombre del usuario
-let miNombre = "";
-if (currentUser && currentUser.name) {
-  miNombre = currentUser.name;
-} else {
-  miNombre = localStorage.getItem("ifd-nombre") || "";
-  while (!miNombre.trim()) { 
-    miNombre = prompt("¿Cuál es tu nombre?") || ""; 
-  }
-  localStorage.setItem("ifd-nombre", miNombre);
-}
+// ================= ESTADO =================
+let miPeer = null;
+let miStream = null;
+let screenStream = null;
+let currentRoom = null;
 
-// Si soy HOST → muestro la sala directo
-if (IS_HOST) {
-  document.getElementById("screen-waiting").style.display = "none";
-  document.getElementById("screen-room").style.display = "flex";
-}
+const state = {
+  miNombre: "",
+  miEmail: "",
+  miPhoto: "",
+  peerId: null,
+  micActivo: true,
+  camActiva: true,
+  sharingScreen: false,
+  panelActivo: null,
+  unreadChat: 0,
+  isHost: IS_HOST,
+  roomId: ROOM_ID
+};
 
-const miPeer = new Peer(undefined, { path: "/peerjs", host: "/", port: location.port || "3000" });
-let miStream = null, screenStream = null;
-let micActivo = true, camActiva = true, sharingScreen = false, panelActivo = null, unreadChat = 0;
-const peers = {}, participantes = {};
+const peers = {};
+const participantes = {};
 const pendingFiles = [];
 
-function updateClock() {
-  const t = new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" });
-  const e1 = document.getElementById("room-time"), e2 = document.getElementById("ctrl-time");
-  if (e1) e1.textContent = t; if (e2) e2.textContent = t;
-}
-setInterval(updateClock, 1000); updateClock();
+// ================= INICIALIZACIÓN =================
 
-document.getElementById("room-code-display").textContent = ROOM_ID;
-document.getElementById("ctrl-code").textContent = ROOM_ID;
-
-navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
-  miStream = stream;
-  agregarVideoTile(stream, true, "yo");
-  miPeer.on("open", (peerId) => {
-    // 👇 AQUÍ VA EL CAMBIO - enviar email y foto
-    socket.emit("join-room", ROOM_ID, peerId, miNombre, IS_HOST, 
-      currentUser?.email || "", 
-      currentUser?.photo || "");
-  });
-  miPeer.on("call", (call) => {
-    call.answer(stream);
-    call.on("stream", (rs) => agregarVideoTile(rs, false, call.peer, participantes[call.peer]?.nombre || "Participante"));
-    peers[call.peer] = call;
-  });
-}).catch(() => {
-  miPeer.on("open", (peerId) => {
-    socket.emit("join-room", ROOM_ID, peerId, miNombre, IS_HOST, 
-      currentUser?.email || "", 
-      currentUser?.photo || "");
-  });
+document.addEventListener('DOMContentLoaded', async () => {
+  await inicializarUsuario();
+  
+  // Si es HOST, mostrar sala inmediatamente
+  if (state.isHost) {
+    mostrarSala();
+    await inicializarPeer();
+  } else {
+    // Si es invitado, mostrar espera
+    mostrarEspera("Conectando a la reunión...");
+    await inicializarPeer();
+  }
+  
+  configurarEventListeners();
+  iniciarReloj();
 });
 
-// ─── SOCKET EVENTS ───────────────────────────────
+async function inicializarUsuario() {
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    state.miNombre = currentUser.name || "Invitado";
+    state.miEmail = currentUser.email || "";
+    state.miPhoto = currentUser.photo || "";
+  } else {
+    state.miNombre = localStorage.getItem("ifd-nombre") || "Invitado";
+    if (!state.miNombre) {
+      const nombre = prompt("¿Cuál es tu nombre?");
+      state.miNombre = nombre || "Invitado";
+      localStorage.setItem("ifd-nombre", state.miNombre);
+    }
+  }
+}
 
-socket.on("waiting-approval", (d) => {
-  if (!IS_HOST) {
-    document.getElementById("screen-waiting").style.display = "flex";
-    document.getElementById("screen-room").style.display = "none";
-    document.getElementById("waiting-msg").textContent = d.message;
+async function inicializarPeer() {
+  try {
+    miStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: { echoCancellation: true, noiseSuppression: true }
+    });
+  } catch (error) {
+    console.warn('Error media:', error);
+    try {
+      miStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 640, height: 480 }, 
+        audio: true 
+      });
+    } catch (e) {
+      console.warn('Solo audio');
+      miStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+  }
+  
+  // Inicializar PeerJS
+  miPeer = new Peer(undefined, { 
+    path: "/peerjs", 
+    host: location.hostname,
+    port: location.port || (location.protocol === 'https:' ? 443 : 80),
+    debug: 0
+  });
+  
+  miPeer.on('open', (peerId) => {
+    state.peerId = peerId;
+    
+    // Unirse a la sala
+    socket.emit('join-room', state.roomId, state.peerId, state.miNombre, state.isHost, state.miEmail, state.miPhoto);
+  });
+  
+  miPeer.on('call', (call) => {
+    call.answer(miStream);
+    call.on('stream', (stream) => {
+      const participante = participantes[call.peer];
+      agregarVideoTile(stream, {
+        esLocal: false,
+        peerId: call.peer,
+        nombre: participante?.nombre || 'Participante'
+      });
+    });
+    peers[call.peer] = call;
+  });
+  
+  miPeer.on('error', (err) => {
+    console.error('PeerJS error:', err);
+  });
+  
+  // Agregar mi video
+  if (miStream) {
+    agregarVideoTile(miStream, {
+      esLocal: true,
+      peerId: 'yo',
+      nombre: state.miNombre
+    });
+  }
+}
+
+// ================= EVENTOS SOCKET =================
+
+socket.on('joined-room', (data) => {
+  if (state.isHost || data.asHost) {
+    mostrarSala();
+    // Host ya está en la sala
+    if (data.participants) {
+      data.participants.forEach(p => {
+        participantes[p.peerId] = p;
+      });
+      actualizarContadorParticipantes();
+    }
+  } else {
+    // Invitado admitido
+    mostrarSala();
   }
 });
 
-socket.on("admitted", () => {
-  document.getElementById("screen-waiting").style.display = "none";
-  document.getElementById("screen-room").style.display = "flex";
-});
-
-socket.on("joined-room", () => {
-  document.getElementById("screen-waiting").style.display = "none";
-  document.getElementById("screen-room").style.display = "flex";
-});
-
-socket.on("user-connected", (peerId, nombre, email, photo) => {
-  participantes[peerId] = { nombre, peerId, email, photo };
-  agregarMensajeSistema(`${nombre} se unió`);
+socket.on('user-connected', (peerId, nombre, email, photo) => {
+  participantes[peerId] = { peerId, nombre, email, photo };
+  
   if (miStream) {
     setTimeout(() => {
       const call = miPeer.call(peerId, miStream);
       if (call) {
-        call.on("stream", (rs) => agregarVideoTile(rs, false, peerId, nombre));
+        call.on('stream', (stream) => {
+          agregarVideoTile(stream, {
+            esLocal: false,
+            peerId,
+            nombre
+          });
+        });
         peers[peerId] = call;
       }
-    }, 600);
+    }, 500);
   }
-  actualizarContador();
+  
+  actualizarContadorParticipantes();
+  renderizarParticipantes();
 });
 
-socket.on("user-disconnected", (peerId, nombre) => {
-  if (peers[peerId]) { peers[peerId].close(); delete peers[peerId]; }
-  const t = document.getElementById("tile-" + peerId); if (t) t.remove();
+socket.on('user-disconnected', (peerId, nombre) => {
+  if (peers[peerId]) {
+    peers[peerId].close();
+    delete peers[peerId];
+  }
+  eliminarVideoTile(peerId);
   delete participantes[peerId];
-  if (nombre) agregarMensajeSistema(`${nombre} salió`);
-  actualizarContador(); recalcGrid();
+  actualizarContadorParticipantes();
+  renderizarParticipantes();
 });
 
-socket.on("waiting-list", (lista) => lista.forEach(u => mostrarEnEspera(u)));
-
-socket.on("user-waiting", (u) => {
-  mostrarEnEspera(u);
-  document.getElementById("waiting-room-panel").style.display = "block";
-});
-
-socket.on("receive-message", (d) => {
-  renderMensaje(d);
-  if (panelActivo !== "chat") { unreadChat++; actualizarBadgeChat(); }
-});
-
-socket.on("receive-file", (d) => {
-  renderArchivo(d);
-  if (panelActivo !== "chat") { unreadChat++; actualizarBadgeChat(); }
-});
-
-socket.on("user-screen-share", (peerId, active) => {
-  const t = document.getElementById("tile-" + peerId);
-  const b = t?.querySelector(".screen-badge");
-  if (b) b.style.display = active ? "block" : "none";
-});
-
-socket.on("user-reaction", (nombre, emoji) => mostrarReaccion(nombre, emoji));
-
-socket.on("force-muted", () => {
-  if (micActivo) toggleMic();
-  agregarMensajeSistema("El anfitrión te silenció");
-});
-
-socket.on("kicked", (msg) => {
-  document.getElementById("kicked-msg").textContent = msg;
-  document.getElementById("kicked-overlay").style.display = "flex";
-});
-
-socket.on("rejected", (msg) => {
-  document.getElementById("waiting-msg").textContent = msg;
-  document.querySelector(".waiting-dots").style.display = "none";
-  document.querySelector(".btn-cancel").textContent = "Volver al inicio";
-  document.querySelector(".btn-cancel").onclick = () => location.href = "/";
-});
-
-socket.on("host-left", () => {
-  agregarMensajeSistema("El anfitrión finalizó la reunión");
-  setTimeout(() => location.href = "/", 3000);
-});
-
-// ─── VIDEO TILES ─────────────────────────────────
-
-function agregarVideoTile(stream, esLocal, id, nombre) {
-  if (document.getElementById("tile-" + id)) {
-    const v = document.querySelector("#tile-" + id + " video");
-    if (v) v.srcObject = stream; return;
+socket.on('waiting-approval', (data) => {
+  if (!state.isHost) {
+    mostrarEspera(data.message || "Esperando que el anfitrión te admita...");
   }
-  const tile = document.createElement("div");
-  tile.className = "video-tile"; tile.id = "tile-" + id;
+});
 
-  const video = document.createElement("video");
-  video.srcObject = stream; video.autoplay = true; video.playsInline = true;
-  if (esLocal) video.muted = true;
+socket.on('admitted', () => {
+  mostrarSala();
+});
 
-  const label = document.createElement("div"); label.className = "video-label";
-  label.textContent = esLocal ? "Tú (" + miNombre + ")" : (nombre || "Participante");
-
-  const acts = document.createElement("div"); acts.className = "video-actions";
-  if (!esLocal && IS_HOST) {
-    const bm = document.createElement("button"); bm.className = "va-btn"; bm.title = "Silenciar"; bm.textContent = "🔇";
-    bm.onclick = () => socket.emit("mute-user", id);
-    const bk = document.createElement("button"); bk.className = "va-btn"; bk.title = "Expulsar"; bk.textContent = "⛔";
-    bk.onclick = () => { if (confirm("¿Expulsar?")) socket.emit("kick-user", id); };
-    acts.appendChild(bm); acts.appendChild(bk);
+socket.on('user-waiting', (usuario) => {
+  if (state.isHost) {
+    mostrarEnEspera(usuario);
+    document.getElementById('waiting-panel')?.classList.remove('hidden');
   }
+});
 
-  const badge = document.createElement("div"); badge.className = "screen-badge";
-  badge.style.cssText = "display:none;position:absolute;top:8px;left:8px;background:rgba(109,26,46,.85);color:#fff;padding:4px 10px;border-radius:12px;font-size:12px";
-  badge.textContent = "📺 Presentando";
-
-  tile.appendChild(video); tile.appendChild(label); tile.appendChild(acts); tile.appendChild(badge);
-  document.getElementById("videos-grid").appendChild(tile);
-  recalcGrid();
-}
-
-function recalcGrid() {
-  const grid = document.getElementById("videos-grid"); const n = grid.children.length;
-  if (n === 1) grid.style.gridTemplateColumns = "1fr";
-  else if (n === 2) grid.style.gridTemplateColumns = "1fr 1fr";
-  else grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(280px, 1fr))";
-}
-
-// ─── PARTICIPANTES ───────────────────────────────
-
-function renderParticipantes() {
-  const list = document.getElementById("participants-list"); list.innerHTML = "";
-  list.appendChild(crearParticipanteEl({ nombre: miNombre, peerId: "yo", photo: currentUser?.photo }, true));
-  Object.values(participantes).forEach(p => list.appendChild(crearParticipanteEl(p, false)));
-  actualizarContador();
-}
-
-function crearParticipanteEl(p, esYo) {
-  const div = document.createElement("div"); div.className = "participant-item";
-  const left = document.createElement("div"); left.className = "p-left";
-  const av = document.createElement("div"); 
-  av.className = "p-avatar";
-  
-  // Mostrar foto de Google si existe
-  if (p.photo) {
-    av.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
-  } else {
-    av.textContent = (p.nombre || "?")[0].toUpperCase();
+socket.on('waiting-list', (lista) => {
+  if (state.isHost) {
+    lista.forEach(mostrarEnEspera);
   }
-  
-  const info = document.createElement("div");
-  const nm = document.createElement("span"); nm.className = "p-name";
-  nm.textContent = esYo ? "Tú (" + miNombre + ")" : p.nombre;
-  info.appendChild(nm);
-  if (esYo && IS_HOST) {
-    const b = document.createElement("span"); b.className = "p-badge"; b.textContent = "Anfitrión";
-    info.appendChild(b);
+});
+
+socket.on('receive-message', (data) => {
+  renderizarMensaje(data);
+  if (state.panelActivo !== 'chat') {
+    state.unreadChat++;
+    actualizarBadgeChat();
   }
-  left.appendChild(av); left.appendChild(info); div.appendChild(left);
-  if (IS_HOST && !esYo) {
-    const acts = document.createElement("div"); acts.className = "p-actions";
-    const bm = document.createElement("button"); bm.className = "pa-btn"; bm.title = "Silenciar"; bm.textContent = "🔇";
-    bm.onclick = () => socket.emit("mute-user", p.peerId);
-    const bk = document.createElement("button"); bk.className = "pa-btn danger"; bk.title = "Expulsar"; bk.textContent = "⛔";
-    bk.onclick = () => { if (confirm("¿Expulsar?")) socket.emit("kick-user", p.peerId); };
-    acts.appendChild(bm); acts.appendChild(bk); div.appendChild(acts);
+});
+
+socket.on('receive-file', (data) => {
+  renderizarArchivo(data);
+  if (state.panelActivo !== 'chat') {
+    state.unreadChat++;
+    actualizarBadgeChat();
   }
-  return div;
-}
+});
 
-function actualizarContador() {
-  document.getElementById("count-badge").textContent = Object.keys(participantes).length + 1;
-}
+socket.on('user-screen-share', (peerId, activo) => {
+  const tile = document.getElementById(`tile-${peerId}`);
+  const badge = tile?.querySelector('.screen-badge');
+  if (badge) {
+    badge.style.display = activo ? 'flex' : 'none';
+  }
+});
 
-function actualizarBadgeChat() {
-  const b = document.getElementById("chat-badge");
-  b.textContent = unreadChat; b.style.display = "flex";
-}
+socket.on('user-reaction', (nombre, emoji) => {
+  mostrarReaccionFlotante(nombre, emoji);
+});
 
-// ─── SALA DE ESPERA HOST ─────────────────────────
+socket.on('force-muted', () => {
+  if (state.micActivo) toggleMic();
+});
 
-function mostrarEnEspera(user) {
-  if (document.getElementById("wp-" + user.socketId)) return;
-  const list = document.getElementById("waiting-list");
-  const item = document.createElement("div"); item.className = "wp-item"; item.id = "wp-" + user.socketId;
-  const nm = document.createElement("div"); nm.className = "wp-name"; 
-  nm.textContent = user.userName;
-  
-  const acts = document.createElement("div"); acts.className = "wp-actions";
-  const admit = document.createElement("button"); admit.className = "wp-admit"; admit.textContent = "✅ Admitir";
-  admit.onclick = () => {
-    socket.emit("admit-user", user.socketId, ROOM_ID); item.remove();
-    if (!list.children.length) document.getElementById("waiting-room-panel").style.display = "none";
-  };
-  const reject = document.createElement("button"); reject.className = "wp-reject"; reject.textContent = "❌ Rechazar";
-  reject.onclick = () => { socket.emit("reject-user", user.socketId, ROOM_ID); item.remove(); };
-  acts.appendChild(admit); acts.appendChild(reject);
-  item.appendChild(nm); item.appendChild(acts); list.appendChild(item);
-}
+socket.on('kicked', (mensaje) => {
+  mostrarOverlayExpulsion(mensaje);
+});
 
-// ─── CONTROLES ───────────────────────────────────
+socket.on('rejected', (mensaje) => {
+  document.getElementById('waiting-message')?.textContent = mensaje;
+  document.querySelector('.waiting-spinner')?.classList.add('hidden');
+  const btn = document.querySelector('.btn-cancel');
+  if (btn) {
+    btn.textContent = 'Volver al inicio';
+    btn.onclick = () => location.href = '/';
+  }
+});
+
+socket.on('host-left', () => {
+  setTimeout(() => location.href = '/', 3000);
+});
+
+// ================= CONTROLES =================
 
 function toggleMic() {
-  if (!miStream) return; micActivo = !micActivo;
-  miStream.getAudioTracks().forEach(t => t.enabled = micActivo);
-  document.getElementById("btn-mic").classList.toggle("muted", !micActivo);
-  document.getElementById("icon-mic").textContent = micActivo ? "🎤" : "🔇";
-  socket.emit("media-state", { roomId: ROOM_ID, userId: miPeer.id, state: { mic: micActivo, cam: camActiva } });
+  if (!miStream) return;
+  state.micActivo = !state.micActivo;
+  miStream.getAudioTracks().forEach(track => track.enabled = state.micActivo);
+  
+  const btn = document.getElementById('btn-mic');
+  const icon = document.getElementById('icon-mic');
+  if (btn) btn.classList.toggle('muted', !state.micActivo);
+  if (icon) icon.textContent = state.micActivo ? 'mic' : 'mic_off';
+  
+  socket.emit('media-state', { roomId: state.roomId, userId: state.peerId, state: { mic: state.micActivo, cam: state.camActiva } });
 }
 
 function toggleCam() {
-  if (!miStream) return; camActiva = !camActiva;
-  miStream.getVideoTracks().forEach(t => t.enabled = camActiva);
-  document.getElementById("btn-cam").classList.toggle("muted", !camActiva);
-  document.getElementById("icon-cam").textContent = camActiva ? "📷" : "🚫";
-  const tile = document.getElementById("tile-yo");
-  if (tile) {
-    const ph = tile.querySelector(".cam-off-placeholder");
-    if (!camActiva && !ph) {
-      const d = document.createElement("div"); d.className = "cam-off-placeholder";
-      d.innerHTML = `<div class="cam-avatar">${miNombre[0].toUpperCase()}</div>`;
-      tile.querySelector("video").style.display = "none"; tile.appendChild(d);
-    } else if (camActiva && ph) { ph.remove(); tile.querySelector("video").style.display = "block"; }
-  }
-  socket.emit("media-state", { roomId: ROOM_ID, userId: miPeer.id, state: { mic: micActivo, cam: camActiva } });
+  if (!miStream) return;
+  state.camActiva = !state.camActiva;
+  miStream.getVideoTracks().forEach(track => track.enabled = state.camActiva);
+  
+  const btn = document.getElementById('btn-cam');
+  const icon = document.getElementById('icon-cam');
+  if (btn) btn.classList.toggle('muted', !state.camActiva);
+  if (icon) icon.textContent = state.camActiva ? 'videocam' : 'videocam_off';
+  
+  actualizarEstadoVideo('yo', { mic: state.micActivo, cam: state.camActiva });
+  socket.emit('media-state', { roomId: state.roomId, userId: state.peerId, state: { mic: state.micActivo, cam: state.camActiva } });
 }
 
 async function toggleScreenShare() {
-  if (!sharingScreen) {
-    try {
-      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      sharingScreen = true; document.getElementById("btn-screen").classList.add("active");
-      const vt = screenStream.getVideoTracks()[0];
-      Object.values(peers).forEach(call => {
-        const s = call.peerConnection.getSenders().find(s => s.track?.kind === "video");
-        if (s) s.replaceTrack(vt);
-      });
-      const mv = document.querySelector("#tile-yo video"); if (mv) mv.srcObject = screenStream;
-      socket.emit("screen-share-start", { roomId: ROOM_ID, userId: miPeer.id });
-      vt.onended = stopScreen;
-    } catch(e) { console.log("Pantalla cancelada"); }
-  } else { stopScreen(); }
-}
-
-function stopScreen() {
-  sharingScreen = false; document.getElementById("btn-screen").classList.remove("active");
-  if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
-  if (miStream) {
-    const vt = miStream.getVideoTracks()[0];
-    Object.values(peers).forEach(call => {
-      const s = call.peerConnection.getSenders().find(s => s.track?.kind === "video");
-      if (s && vt) s.replaceTrack(vt);
-    });
-    const mv = document.querySelector("#tile-yo video"); if (mv) mv.srcObject = miStream;
+  if (state.sharingScreen) {
+    await stopScreenShare();
+  } else {
+    await startScreenShare();
   }
-  socket.emit("screen-share-stop", { roomId: ROOM_ID, userId: miPeer.id });
 }
 
-// ─── PANEL LATERAL ───────────────────────────────
-
-function togglePanel(name) {
-  const panel = document.getElementById("side-panel");
-  if (panelActivo === name || !name) { panel.style.display = "none"; panelActivo = null; return; }
-  panel.style.display = "flex"; panelActivo = name;
-  document.getElementById("panel-chat").style.display = name === "chat" ? "flex" : "none";
-  document.getElementById("panel-people").style.display = name === "people" ? "flex" : "none";
-  if (name === "chat") {
-    unreadChat = 0; document.getElementById("chat-badge").style.display = "none";
-    setTimeout(() => { const m = document.getElementById("chat-messages"); m.scrollTop = m.scrollHeight; }, 50);
-  }
-  if (name === "people") renderParticipantes();
-}
-
-// ─── CHAT ─────────────────────────────────────────
-
-function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 120) + "px"; }
-
-function handleChatKeydown(e) {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-}
-
-function sendMessage() {
-  if (pendingFiles.length > 0) {
-    pendingFiles.forEach(f => enviarArchivo(f)); pendingFiles.length = 0;
-    document.getElementById("attachment-preview").innerHTML = "";
-    document.getElementById("attachment-preview").style.display = "none";
-  }
-  const input = document.getElementById("chat-input");
-  const texto = input.value.trim(); if (!texto) return;
-  socket.emit("send-message", { roomId: ROOM_ID, nombre: miNombre, texto, tipo: "text" });
-  input.value = ""; input.style.height = "auto";
-}
-
-function renderMensaje(data) {
-  const msgs = document.getElementById("chat-messages");
-  const div = document.createElement("div"); div.className = "chat-msg";
-  div.innerHTML = `<div class="chat-msg-header"><span class="chat-msg-name">${data.nombre}</span><span class="chat-msg-time">${data.time||""}</span></div><div class="chat-msg-text">${escapeHtml(data.texto)}</div>`;
-  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
-}
-
-function renderArchivo(data) {
-  const msgs = document.getElementById("chat-messages");
-  const div = document.createElement("div"); div.className = "chat-msg";
-  const header = `<div class="chat-msg-header"><span class="chat-msg-name">${data.nombre}</span><span class="chat-msg-time">${data.time||""}</span></div>`;
-  const content = data.tipo === "image"
-    ? `<div class="chat-msg-img"><img src="${data.url}" alt="${data.fileName}" onclick="window.open(this.src)"/></div>`
-    : `<a href="${data.url}" target="_blank" class="chat-msg-file"><span class="file-icon">${getFileIcon(data.fileName)}</span><div><span class="file-name">${data.fileName}</span><span class="file-size">${formatSize(data.fileSize||0)}</span></div></a>`;
-  div.innerHTML = header + content; msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
-}
-
-function agregarMensajeSistema(texto) {
-  const msgs = document.getElementById("chat-messages");
-  const div = document.createElement("div"); div.className = "system-msg"; div.textContent = texto;
-  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
-}
-
-// ─── ARCHIVOS ────────────────────────────────────
-
-function handleFileSelect(input) {
-  Array.from(input.files).forEach(f => { pendingFiles.push(f); mostrarPreview(f); });
-  input.value = "";
-  document.getElementById("attachment-preview").style.display = pendingFiles.length ? "flex" : "none";
-}
-
-function mostrarPreview(file) {
-  const p = document.getElementById("attachment-preview");
-  const item = document.createElement("div"); item.className = "attach-preview-item"; item.id = "prev-" + file.name;
-  item.innerHTML = `<span>${getFileIcon(file.name)} ${file.name}</span><button class="attach-remove" onclick="removeFile('${file.name}')">✕</button>`;
-  p.appendChild(item);
-}
-
-function removeFile(name) {
-  const idx = pendingFiles.findIndex(f => f.name === name); if (idx !== -1) pendingFiles.splice(idx, 1);
-  const el = document.getElementById("prev-" + name); if (el) el.remove();
-  if (!pendingFiles.length) document.getElementById("attachment-preview").style.display = "none";
-}
-
-async function enviarArchivo(file) {
-  const fd = new FormData(); fd.append("file", file);
+async function startScreenShare() {
   try {
-    const r = await fetch("/upload", { method: "POST", body: fd });
-    const d = await r.json(); if (!d.ok) return;
-    socket.emit("share-file", { roomId: ROOM_ID, nombre: miNombre, url: d.url, fileName: d.name, fileSize: d.size, tipo: file.type.startsWith("image/") ? "image" : "file" });
-  } catch(e) { console.error(e); }
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+      video: { cursor: 'always' }, 
+      audio: false 
+    });
+    
+    state.sharingScreen = true;
+    document.getElementById('btn-screen')?.classList.add('active');
+    
+    const videoTrack = screenStream.getVideoTracks()[0];
+    Object.values(peers).forEach(call => {
+      const sender = call.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+      if (sender && videoTrack) sender.replaceTrack(videoTrack);
+    });
+    
+    const miTile = document.getElementById('tile-yo');
+    if (miTile) {
+      const video = miTile.querySelector('video');
+      if (video) video.srcObject = screenStream;
+      const badge = miTile.querySelector('.screen-badge');
+      if (badge) badge.classList.remove('hidden');
+    }
+    
+    socket.emit('screen-share-start', { roomId: state.roomId, userId: state.peerId });
+    videoTrack.onended = stopScreenShare;
+    
+  } catch (error) {
+    console.log('Screen share cancelado');
+  }
 }
 
-// ─── REACCIONES ──────────────────────────────────
-
-function toggleReactionsMenu() {
-  const p = document.getElementById("reactions-menu");
-  p.style.display = p.style.display === "none" ? "flex" : "none";
+async function stopScreenShare() {
+  state.sharingScreen = false;
+  document.getElementById('btn-screen')?.classList.remove('active');
+  
+  if (screenStream) {
+    screenStream.getTracks().forEach(track => track.stop());
+    screenStream = null;
+  }
+  
+  if (miStream) {
+    const videoTrack = miStream.getVideoTracks()[0];
+    Object.values(peers).forEach(call => {
+      const sender = call.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+      if (sender && videoTrack) sender.replaceTrack(videoTrack);
+    });
+    
+    const miTile = document.getElementById('tile-yo');
+    if (miTile) {
+      const video = miTile.querySelector('video');
+      if (video) video.srcObject = miStream;
+      const badge = miTile.querySelector('.screen-badge');
+      if (badge) badge.classList.add('hidden');
+    }
+  }
+  
+  socket.emit('screen-share-stop', { roomId: state.roomId, userId: state.peerId });
 }
-
-function sendReaction(emoji) {
-  socket.emit("reaction", { roomId: ROOM_ID, userName: miNombre, emoji });
-  document.getElementById("reactions-menu").style.display = "none";
-}
-
-function mostrarReaccion(nombre, emoji) {
-  const el = document.createElement("div"); el.className = "reaction-popup"; el.textContent = emoji;
-  el.style.left = (20 + Math.random() * 60) + "%";
-  document.getElementById("reactions-overlay").appendChild(el);
-  setTimeout(() => el.remove(), 2500);
-}
-
-// ─── SALIR ────────────────────────────────────────
 
 function leaveMeeting() {
-  if (confirm("¿Salir de la reunión?")) {
-    Object.values(peers).forEach(c => c.close());
-    if (miStream) miStream.getTracks().forEach(t => t.stop());
-    socket.disconnect(); location.href = "/";
+  if (!confirm('¿Salir de la reunión?')) return;
+  Object.values(peers).forEach(call => call.close());
+  if (miStream) miStream.getTracks().forEach(track => track.stop());
+  if (screenStream) screenStream.getTracks().forEach(track => track.stop());
+  socket.disconnect();
+  location.href = '/';
+}
+
+// ================= UI HELPERS =================
+
+function mostrarEspera(mensaje) {
+  document.getElementById('screen-waiting')?.classList.remove('hidden');
+  document.getElementById('screen-room')?.classList.add('hidden');
+  document.getElementById('waiting-message')?.textContent = mensaje;
+}
+
+function mostrarSala() {
+  document.getElementById('screen-waiting')?.classList.add('hidden');
+  document.getElementById('screen-room')?.classList.remove('hidden');
+}
+
+function togglePanel(nombre) {
+  const panel = document.getElementById('side-panel');
+  if (state.panelActivo === nombre || !nombre) {
+    panel?.classList.add('hidden');
+    state.panelActivo = null;
+    return;
+  }
+  panel?.classList.remove('hidden');
+  state.panelActivo = nombre;
+  document.getElementById('panel-chat')?.classList.toggle('hidden', nombre !== 'chat');
+  document.getElementById('panel-people')?.classList.toggle('hidden', nombre !== 'people');
+  if (nombre === 'chat') {
+    state.unreadChat = 0;
+    actualizarBadgeChat();
+  }
+  if (nombre === 'people') renderizarParticipantes();
+}
+
+function actualizarBadgeChat() {
+  const badge = document.getElementById('chat-badge');
+  if (badge) {
+    badge.textContent = state.unreadChat;
+    badge.classList.toggle('hidden', state.unreadChat === 0);
   }
 }
 
 function copyRoomLink() {
-  navigator.clipboard.writeText(location.href.split("?")[0]);
-  alert("Link copiado ✅");
+  const url = location.href.split('?')[0];
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Enlace copiado ✅');
+  });
 }
 
-// ─── UTILIDADES ──────────────────────────────────
-
-function escapeHtml(t) { return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
-function getFileIcon(n) {
-  const e = (n||"").split(".").pop().toLowerCase();
-  return {pdf:"📄",doc:"📝",docx:"📝",xls:"📊",xlsx:"📊",ppt:"📑",pptx:"📑",zip:"🗜️",rar:"🗜️",mp4:"🎬",mp3:"🎵",png:"🖼️",jpg:"🖼️",jpeg:"🖼️",gif:"🖼️"}[e] || "📎";
+function configurarEventListeners() {
+  document.getElementById('btn-mic')?.addEventListener('click', toggleMic);
+  document.getElementById('btn-cam')?.addEventListener('click', toggleCam);
+  document.getElementById('btn-screen')?.addEventListener('click', toggleScreenShare);
+  document.getElementById('btn-leave')?.addEventListener('click', leaveMeeting);
+  document.getElementById('btn-people')?.addEventListener('click', () => togglePanel('people'));
+  document.getElementById('btn-chat')?.addEventListener('click', () => togglePanel('chat'));
+  
+  const chatInput = document.getElementById('chat-input');
+  chatInput?.addEventListener('input', (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+  });
+  chatInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  document.getElementById('btn-send-message')?.addEventListener('click', sendMessage);
+  document.getElementById('file-input')?.addEventListener('change', handleFileSelect);
 }
 
-function formatSize(b) {
-  if (b < 1024) return b + "B";
-  if (b < 1048576) return (b/1024).toFixed(1) + "KB";
-  return (b/1048576).toFixed(1) + "MB";
+function iniciarReloj() {
+  const actualizar = () => {
+    const ahora = new Date();
+    const tiempo = ahora.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('room-time')?.textContent = tiempo;
+  };
+  actualizar();
+  setInterval(actualizar, 30000);
 }
 
-document.addEventListener("click", (e) => {
-  if (!e.target.closest("[onclick='toggleReactionsMenu()']") && !e.target.closest(".reactions-menu")) {
-    const p = document.getElementById("reactions-menu"); if (p) p.style.display = "none";
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const texto = input?.value.trim();
+  if (!texto) return;
+  socket.emit('send-message', { roomId: state.roomId, nombre: state.miNombre, texto, tipo: 'text', timestamp: Date.now() });
+  input.value = '';
+  input.style.height = 'auto';
+}
+
+function renderizarMensaje(data) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  const msg = document.createElement('div');
+  msg.className = `chat-message ${data.nombre === state.miNombre ? 'own' : ''}`;
+  const time = data.time || new Date(data.timestamp).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' });
+  msg.innerHTML = `<div class="chat-message-header"><span class="chat-message-name">${escapeHtml(data.nombre)}</span><span class="chat-message-time">${time}</span></div><div class="chat-message-text">${escapeHtml(data.texto)}</div>`;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderizarArchivo(data) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  const msg = document.createElement('div');
+  msg.className = 'chat-message';
+  const content = data.tipo === 'image' 
+    ? `<a href="${data.url}" target="_blank" class="chat-image"><img src="${data.url}" alt="${escapeHtml(data.fileName)}" loading="lazy"></a>`
+    : `<a href="${data.url}" target="_blank" class="chat-file"><span class="chat-file-icon">📎</span><div class="chat-file-info"><span class="chat-file-name">${escapeHtml(data.fileName)}</span></div></a>`;
+  msg.innerHTML = `<div class="chat-message-header"><span class="chat-message-name">${escapeHtml(data.nombre)}</span></div>${content}`;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function handleFileSelect(input) {
+  const files = Array.from(input.files || []);
+  files.forEach(file => {
+    if (file.size > 100 * 1024 * 1024) return;
+    pendingFiles.push(file);
+  });
+  input.value = '';
+}
+
+function renderizarParticipantes() {
+  const list = document.getElementById('participants-list');
+  if (!list) return;
+  list.innerHTML = '';
+  list.appendChild(crearItemParticipante({ peerId: 'yo', nombre: state.miNombre }, true));
+  Object.values(participantes).forEach(p => list.appendChild(crearItemParticipante(p, false)));
+  actualizarContadorParticipantes();
+}
+
+function crearItemParticipante(p, esYo) {
+  const item = document.createElement('div');
+  item.className = 'participant-item';
+  const left = document.createElement('div');
+  left.className = 'participant-left';
+  const avatar = document.createElement('div');
+  avatar.className = 'participant-avatar';
+  avatar.textContent = (p.nombre || '?')[0].toUpperCase();
+  const info = document.createElement('div');
+  info.className = 'participant-info';
+  const name = document.createElement('span');
+  name.className = 'participant-name';
+  name.textContent = esYo ? `Tú (${p.nombre})` : p.nombre;
+  info.appendChild(name);
+  if (esYo && state.isHost) {
+    const badge = document.createElement('span');
+    badge.className = 'participant-badge';
+    badge.textContent = 'Anfitrión';
+    info.appendChild(badge);
   }
-});
+  left.appendChild(avatar);
+  left.appendChild(info);
+  item.appendChild(left);
+  return item;
+}
+
+function actualizarContadorParticipantes() {
+  const count = Object.keys(participantes).length + 1;
+  document.getElementById('people-count')?.textContent = count;
+}
+
+function mostrarEnEspera(usuario) {
+  if (document.getElementById(`waiting-${usuario.socketId}`)) return;
+  const list = document.getElementById('waiting-list');
+  if (!list) return;
+  const item = document.createElement('div');
+  item.className = 'waiting-item';
+  item.id = `waiting-${usuario.socketId}`;
+  item.innerHTML = `<span class="waiting-name">${escapeHtml(usuario.userName)}</span><div class="waiting-actions"><button class="waiting-admit">✅ Admitir</button><button class="waiting-reject">❌</button></div>`;
+  item.querySelector('.waiting-admit').onclick = () => {
+    socket.emit('admit-user', usuario.socketId, state.roomId);
+    item.remove();
+  };
+  item.querySelector('.waiting-reject').onclick = () => {
+    socket.emit('reject-user', usuario.socketId, state.roomId);
+    item.remove();
+  };
+  list.appendChild(item);
+}
+
+function mostrarReaccionFlotante(nombre, emoji) {
+  const overlay = document.getElementById('reactions-overlay');
+  if (!overlay) return;
+  const reaction = document.createElement('div');
+  reaction.className = 'reaction-float';
+  reaction.textContent = emoji;
+  reaction.style.left = `${20 + Math.random() * 60}%`;
+  reaction.style.bottom = '100px';
+  overlay.appendChild(reaction);
+  setTimeout(() => reaction.remove(), 2500);
+}
+
+function mostrarOverlayExpulsion(mensaje) {
+  const overlay = document.getElementById('dismissed-overlay');
+  if (!overlay) return;
+  document.getElementById('dismissed-message')?.textContent = mensaje || 'Fuiste expulsado de la reunión.';
+  overlay.classList.remove('hidden');
+}
+
+function agregarVideoTile(stream, config) {
+  const { esLocal, peerId, nombre } = config;
+  const tileExistente = document.getElementById(`tile-${peerId}`);
+  if (tileExistente) {
+    const video = tileExistente.querySelector('video');
+    if (video) video.srcObject = stream;
+    return;
+  }
+  
+  const tile = document.createElement('div');
+  tile.className = `video-container ${esLocal ? 'self' : ''}`;
+  tile.id = `tile-${peerId}`;
+  
+  const video = document.createElement('video');
+  video.srcObject = stream;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = esLocal;
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'video-overlay';
+  overlay.innerHTML = `<div class="video-user-info"><div class="video-avatar">${(nombre || '?')[0].toUpperCase()}</div><span class="video-name">${esLocal ? `Tú (${nombre})` : nombre}</span></div>`;
+  
+  const badge = document.createElement('div');
+  badge.className = 'screen-badge hidden';
+  badge.innerHTML = '<span style="margin-right:4px">📺</span>Presentando';
+  
+  tile.appendChild(video);
+  tile.appendChild(overlay);
+  tile.appendChild(badge);
+  document.getElementById('videos-grid')?.appendChild(tile);
+  actualizarLayoutVideos();
+}
+
+function eliminarVideoTile(peerId) {
+  const tile = document.getElementById(`tile-${peerId}`);
+  if (tile) {
+    tile.style.opacity = '0';
+    setTimeout(() => tile.remove(), 200);
+  }
+}
+
+function actualizarLayoutVideos() {
+  const grid = document.getElementById('videos-grid');
+  if (!grid) return;
+  const count = grid.children.length;
+  if (count === 1) grid.style.gridTemplateColumns = '1fr';
+  else if (count === 2) grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+  else if (count <= 4) grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+  else if (count <= 6) grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+  else grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(240px, 1fr))';
+}
+
+function actualizarEstadoVideo(peerId, { mic, cam }) {
+  const tile = document.getElementById(`tile-${peerId}`);
+  if (!tile) return;
+  const indicator = tile.querySelector('.status-indicator');
+  if (indicator) indicator.classList.toggle('muted', !mic);
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Exportar para debug
+if (typeof window !== 'undefined') {
+  window.IFDMeet = { state, peers, participantes };
+}

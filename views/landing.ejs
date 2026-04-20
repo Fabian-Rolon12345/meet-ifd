@@ -16,24 +16,24 @@
 
   <header class="header">
     <div class="header-start">
-      <button class="icon-btn"><span class="material-icons">menu</span></button>
+      <button class="icon-btn" aria-label="Menú"><span class="material-icons">menu</span></button>
     </div>
     <div class="header-center">
       <div class="brand">
         <div class="brand-logo">
-          <img src="/img/logo-ifd.png" alt="IFD" onerror="this.parentElement.innerHTML='<span class=material-icons>school</span>'">
+          <img src="/img/logo-ifd.png" alt="IFD" onerror="this.parentElement.innerHTML='<span class=&quot;material-icons&quot;>school</span>'">
         </div>
         <div class="brand-text"><span class="brand-name">IFD Meet</span></div>
       </div>
     </div>
     <div class="header-end">
-      <% if (user) { %>
+      <% if (typeof user !== 'undefined' && user) { %>
         <div class="user-menu">
           <div class="user-info">
-            <img src="<%= user.photo %>" alt="<%= user.name %>" class="user-photo">
+            <img src="<%= user.photo %>" alt="<%= user.name %>" class="user-photo" onerror="this.src='https://ui-avatars.com/api/?name=<%= encodeURIComponent(user.name) %>&background=random'">
             <span class="user-name"><%= user.name.split(' ')[0] %></span>
           </div>
-          <a href="/logout" class="btn-logout"><span class="material-icons" style="font-size:18px">logout</span></a>
+          <a href="/logout" class="btn-logout" title="Cerrar sesión"><span class="material-icons" style="font-size:18px">logout</span></a>
         </div>
       <% } else { %>
         <a href="/auth/google" class="google-signin-btn">
@@ -50,7 +50,7 @@
         <h1 class="hero-title">Videoconferencias seguras para el IFD</h1>
         <p class="hero-subtitle">Conectá con tus compañeros y docentes en tiempo real.</p>
         
-        <% if (!user) { %>
+        <% if (typeof user === 'undefined' || !user) { %>
           <div class="signin-prompt">
             <p>👋 Iniciar sesión para acceder a todas las funciones</p>
             <p style="color:#5f6368;font-size:13px">Ingresá con Google para crear reuniones</p>
@@ -59,7 +59,7 @@
         
         <div class="actions-container">
           <div class="new-meeting-wrapper">
-            <button class="btn btn-primary btn-large" onclick="<%= user ? 'toggleMeetingDropdown()' : 'showSigninPrompt()' %>">
+            <button class="btn btn-primary btn-large" onclick="<%= typeof user !== 'undefined' && user ? 'toggleMeetingDropdown()' : 'showSigninPrompt()' %>">
               <span class="material-icons">video_camera_front</span>
               Nueva reunión
               <span class="material-icons dropdown-arrow">expand_more</span>
@@ -92,7 +92,7 @@
     </section>
     <section class="ifd-card-section">
       <div class="ifd-card">
-        <img src="/img/logo-ifd.png" alt="IFD" class="ifd-card-logo">
+        <img src="/img/logo-ifd.png" alt="IFD" class="ifd-card-logo" onerror="this.style.display='none'">
         <h3>Instituto de Formación Docente</h3>
         <p>Santa Rosa, Misiones · Paraguay</p>
         <span class="ifd-res">Res. N°43 del 02-07-1997</span>
@@ -102,7 +102,10 @@
 
   <div class="modal-overlay" id="link-modal" style="display:none">
     <div class="modal-card">
-      <div class="modal-header"><h3>Tu reunión está lista</h3><button class="modal-close" onclick="closeModal()"><span class="material-icons">close</span></button></div>
+      <div class="modal-header">
+        <h3>Tu reunión está lista</h3>
+        <button class="modal-close" onclick="closeModal()" aria-label="Cerrar"><span class="material-icons">close</span></button>
+      </div>
       <div class="modal-body">
         <p>Compartí este enlace:</p>
         <div class="link-container">
@@ -123,12 +126,18 @@
   <script>
     const socket = io();
     let pendingLink = "";
-    var isLoggedIn = false, currentUser = null;
-    <% if (user) { %>isLoggedIn = true; currentUser = <%- JSON.stringify(user) %>;<% } %>
+    
+    // Estado de autenticación
+    var isLoggedIn = false;
+    var currentUser = null;
+    
+    <% if (typeof user !== 'undefined' && user) { %>
+      isLoggedIn = true;
+      currentUser = <%- JSON.stringify(user) %>;
+    <% } %>
 
     function updateHeaderTime() {
-      const now = new Date();
-      // Podés mostrar hora si querés
+      // Podés mostrar la hora si querés
     }
     setInterval(updateHeaderTime, 30000);
 
@@ -136,10 +145,13 @@
       if (!isLoggedIn) { showToast("🔐 Iniciá sesión primero", "info"); return; }
       document.getElementById("meeting-dropdown").classList.toggle("show");
     }
+    
     function showSigninPrompt() { showToast("🔐 Iniciá sesión para crear reuniones", "info"); }
     
     document.addEventListener("click", (e) => {
-      if (!e.target.closest(".new-meeting-wrapper")) document.getElementById("meeting-dropdown").classList.remove("show");
+      if (!e.target.closest(".new-meeting-wrapper")) {
+        document.getElementById("meeting-dropdown").classList.remove("show");
+      }
     });
 
     document.getElementById("room-code-input").addEventListener("input", (e) => {
@@ -154,25 +166,38 @@
       if (!isLoggedIn) { showToast("🔐 Iniciá sesión primero", "error"); return; }
       window.location.href = `/sala/${generateRoomId()}?host=1`;
     }
+    
     function createMeetingLink() {
       if (!isLoggedIn) { showToast("🔐 Iniciá sesión primero", "error"); return; }
       pendingLink = `${location.origin}/sala/${generateRoomId()}`;
       document.getElementById("generated-link").value = pendingLink;
       document.getElementById("link-modal").style.display = "flex";
     }
+    
     function closeModal() { document.getElementById("link-modal").style.display = "none"; }
+    
     function copyLink() {
       const input = document.getElementById("generated-link");
       input.select();
-      navigator.clipboard.writeText(input.value).then(() => showToast("✅ Copiado", "success"));
+      input.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast("✅ Copiado", "success");
+      }).catch(() => {
+        showToast("❌ Error al copiar", "error");
+      });
     }
+    
     function goToMeeting() {
       if (!isLoggedIn) return;
       window.location.href = pendingLink + "?host=1";
     }
+    
     function joinWithCode() {
       let code = document.getElementById("room-code-input").value.trim();
-      if (code.includes("/sala/")) { const m = code.match(/\/sala\/([a-zA-Z0-9\-]+)/); if (m) code = m[1]; }
+      if (code.includes("/sala/")) { 
+        const m = code.match(/\/sala\/([a-zA-Z0-9\-]+)/); 
+        if (m) code = m[1]; 
+      }
       if (code) window.location.href = `/sala/${code}`;
     }
 
@@ -180,7 +205,8 @@
       const c = document.getElementById("toast-container");
       const t = document.createElement("div");
       t.className = `toast toast-${type}`;
-      t.innerHTML = `<span class="material-icons">${type==="success"?"check_circle":type==="error"?"error":"info"}</span>${msg}`;
+      const icons = { success: "check_circle", error: "error", info: "info" };
+      t.innerHTML = `<span class="material-icons">${icons[type] || icons.info}</span>${msg}`;
       c.appendChild(t);
       setTimeout(() => { t.style.opacity="0"; t.style.transform="translateY(-20px)"; setTimeout(()=>t.remove(),300); }, 3000);
     }
@@ -190,8 +216,17 @@
       if (s.maintenance) { b.style.display="flex"; document.getElementById("maintenance-msg").textContent = s.message; }
       else b.style.display = "none";
     });
-    fetch("/api/status").then(r=>r.json()).then(s=>{ if(s.maintenance){ document.getElementById("maintenance-msg").textContent=s.message; document.getElementById("maintenance-banner").style.display="flex"; }}).catch(()=>{});
-    document.getElementById("room-code-input").addEventListener("keydown", (e) => { if(e.key==="Enter"&&!e.target.disabled) joinWithCode(); });
+    
+    fetch("/api/status").then(r=>r.json()).then(s=>{ 
+      if(s.maintenance){ 
+        document.getElementById("maintenance-msg").textContent=s.message; 
+        document.getElementById("maintenance-banner").style.display="flex"; 
+      }
+    }).catch(()=>{});
+    
+    document.getElementById("room-code-input").addEventListener("keydown", (e) => { 
+      if(e.key==="Enter"&&!e.target.disabled) joinWithCode(); 
+    });
   </script>
 </body>
 </html>

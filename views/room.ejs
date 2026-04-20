@@ -2,212 +2,765 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IFD Meet - Reunión</title>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-  <link rel="stylesheet" href="/css/room.css">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #202124;
+      --surface:  #2d2e31;
+      --elevated: #3c4043;
+      --maroon:   #6d1a2e;
+      --maroon-d: #4a1220;
+      --red:      #ea4335;
+      --green:    #1e8e3e;
+      --t1:       #e8eaed;
+      --t2:       #9aa0a6;
+      --brd:      rgba(255,255,255,0.1);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Roboto', sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* HEADER */
+    #header {
+      height: 64px;
+      min-height: 64px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--brd);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .h-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+    .h-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .h-name {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .h-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.07);
+      padding: 7px 14px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .h-time, .h-code { font-size: 14px; color: var(--t2); }
+    .h-sep { color: var(--t2); font-size: 12px; }
+
+    .h-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+    .icon-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--t2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: .15s;
+      position: relative;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--t1); }
+    .icon-btn .material-icons-round { font-size: 22px; }
+    .badge {
+      position: absolute;
+      top: 4px; right: 4px;
+      min-width: 16px; height: 16px;
+      background: var(--maroon);
+      color: white;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+    }
+
+    /* ÁREA CENTRAL */
+    #main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* VIDEO GRID */
+    #video-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    #videos-grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      gap: 12px;
+      align-content: center;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #videos-grid.n1 { grid-template-columns: 1fr; }
+    #videos-grid.n2 { grid-template-columns: repeat(2, 1fr); }
+    #videos-grid.n3,
+    #videos-grid.n4 { grid-template-columns: repeat(2, 1fr); }
+    #videos-grid.n5,
+    #videos-grid.n6 { grid-template-columns: repeat(3, 1fr); }
+
+    .video-tile {
+      position: relative;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      min-height: 0;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+    }
+    .video-tile.speaking {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(30,142,62,.3);
+    }
+    .video-tile video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .video-tile.self video { transform: scaleX(-1); }
+
+    .tile-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: linear-gradient(135deg, var(--maroon), var(--maroon-d));
+    }
+    .tile-avatar {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 3px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 700; color: white;
+    }
+
+    .tile-label {
+      position: absolute;
+      bottom: 10px; left: 10px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tile-label .material-icons-round { font-size: 14px; }
+    .tile-label .m { color: var(--red); }
+
+    /* PANEL LATERAL */
+    #side-panel {
+      width: 360px;
+      background: var(--surface);
+      border-left: 1px solid var(--brd);
+      display: none;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+    #side-panel.open { display: flex; }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--brd);
+      flex-shrink: 0;
+    }
+    .p-tab {
+      flex: 1;
+      padding: 14px 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--t2);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      transition: .15s;
+    }
+    .p-tab.on { color: var(--t1); border-bottom-color: var(--maroon); }
+    .p-tab:hover:not(.on) { color: var(--t1); }
+
+    .panel-pane { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .panel-pane.on { display: flex; }
+
+    .p-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .p-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      transition: .15s;
+    }
+    .p-item:hover { background: rgba(255,255,255,0.05); }
+    .p-ava {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--maroon);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 600; color: white;
+      flex-shrink: 0;
+    }
+    .p-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .p-role { font-size: 11px; color: #f9ab00; }
+    .p-icons { display: flex; gap: 4px; color: var(--t2); }
+    .p-icons .material-icons-round { font-size: 16px; }
+    .p-icons .m { color: var(--red); }
+
+    .chat-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .c-msg { display: flex; flex-direction: column; gap: 3px; }
+    .c-msg.own { align-items: flex-end; }
+    .c-meta { display: flex; gap: 8px; align-items: baseline; }
+    .c-name { font-size: 12px; font-weight: 600; color: var(--t2); }
+    .c-time { font-size: 11px; color: var(--t2); opacity: .7; }
+    .c-bubble {
+      font-size: 14px; color: var(--t1);
+      background: var(--elevated);
+      padding: 8px 13px;
+      border-radius: 12px 12px 12px 4px;
+      max-width: 88%;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .c-msg.own .c-bubble {
+      background: var(--maroon);
+      border-radius: 12px 12px 4px 12px;
+    }
+    .c-sys { text-align: center; font-size: 12px; color: var(--t2); padding: 4px; font-style: italic; }
+
+    .chat-input-row {
+      padding: 12px 14px;
+      border-top: 1px solid var(--brd);
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .chat-textarea {
+      flex: 1;
+      background: var(--elevated);
+      border: 1px solid var(--brd);
+      border-radius: 20px;
+      color: var(--t1);
+      padding: 10px 15px;
+      font-family: inherit; font-size: 14px;
+      resize: none; outline: none;
+      min-height: 40px; max-height: 110px;
+      line-height: 1.4;
+      transition: border-color .15s;
+    }
+    .chat-textarea:focus { border-color: var(--maroon); }
+    .chat-textarea::placeholder { color: var(--t2); }
+    .chat-send {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--maroon);
+      border: none; color: white;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: .15s;
+    }
+    .chat-send:hover { background: var(--maroon-d); transform: scale(1.06); }
+
+    /* CONTROLES */
+    #controls {
+      height: 76px;
+      min-height: 76px;
+      background: var(--surface);
+      border-top: 1px solid var(--brd);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      flex-shrink: 0;
+      z-index: 100;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: var(--elevated);
+      color: var(--t1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: .15s;
+    }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); }
+    .ctrl-btn .material-icons-round { font-size: 22px; }
+    .ctrl-btn.muted { background: var(--red); }
+    .ctrl-btn.screen-on { background: rgba(0,121,107,0.9); }
+    .ctrl-divider { width: 1px; height: 30px; background: var(--brd); margin: 0 4px; }
+
+    .ctrl-leave {
+      background: var(--red);
+      width: 56px; height: 48px;
+      border-radius: 28px;
+    }
+    .ctrl-leave:hover { background: #c5291e; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      #header { padding: 0 10px; }
+      .h-name { display: none; }
+      #side-panel { position: absolute; right: 0; top: 64px; bottom: 76px; width: 100%; max-width: 340px; }
+      #controls { gap: 4px; }
+      .ctrl-btn { width: 44px; height: 44px; }
+    }
+  </style>
 </head>
 <body>
-  <div id="screen-waiting" class="screen waiting-screen">
-    <div class="waiting-container">
-      <div class="waiting-card">
-        <div class="waiting-logo">
-          <img src="/img/logo-ifd.png" alt="IFD" onerror="this.parentElement.innerHTML='<span class=material-icons>school</span>'">
-        </div>
-        <h2>Esperando para unirse</h2>
-        <p id="waiting-message">El anfitrión debe admitirte para entrar a la reunión.</p>
-        <div class="waiting-spinner">
-          <div class="spinner-dot"></div>
-          <div class="spinner-dot"></div>
-          <div class="spinner-dot"></div>
-        </div>
-        <button class="btn btn-text" onclick="leaveWaiting()">Cancelar</button>
-      </div>
-    </div>
-  </div>
 
-  <div id="screen-room" class="screen room-screen" style="display:none">
-    
-    <header class="room-header">
-      <div class="header-start">
-        <div class="room-title">
-          <span class="material-icons room-icon">video_camera_front</span>
-          <span class="room-name">IFD Meet</span>
-        </div>
-      </div>
-      
-      <div class="header-center">
-        <span id="room-time" class="time-display"></span>
-        <span class="separator">•</span>
-        <span id="room-code" class="code-display" title="Código de sala"></span>
-        <button class="icon-btn-sm" onclick="copyRoomLink()" title="Copiar enlace">
-          <span class="material-icons">content_copy</span>
-        </button>
-      </div>
-      
-      <div class="header-end">
-        <button class="icon-btn" id="btn-people" onclick="togglePanel('people')" title="Participantes">
-          <span class="material-icons">people</span>
-          <span class="badge" id="people-count">1</span>
-        </button>
-        <button class="icon-btn" id="btn-chat" onclick="togglePanel('chat')" title="Chat">
-          <span class="material-icons">chat</span>
-          <span class="badge notification" id="chat-badge" style="display:none">0</span>
-        </button>
-        <button class="icon-btn" id="btn-activities" title="Actividades">
-          <span class="material-icons">widgets</span>
-        </button>
-      </div>
-    </header>
+<div id="app">
 
-    <div class="room-main">
-      <div class="video-area">
-        <div id="videos-grid" class="videos-grid"></div>
-        <div id="screen-share-overlay" class="screen-share-overlay" style="display:none">
-          <span class="material-icons">present_to_all</span>
-          <span>Compartiendo pantalla</span>
-        </div>
-      </div>
-
-      <aside class="side-panel" id="side-panel">
-        <div id="panel-people" class="panel" style="display:none">
-          <div class="panel-header">
-            <h3>Participantes</h3>
-            <button class="panel-close" onclick="togglePanel(null)">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          <div class="panel-search">
-            <span class="material-icons">search</span>
-            <input type="text" placeholder="Buscar personas..." id="search-participants">
-          </div>
-          <div id="participants-list" class="participants-list"></div>
-        </div>
-
-        <div id="panel-chat" class="panel" style="display:none">
-          <div class="panel-header">
-            <h3>Chat de la reunión</h3>
-            <button class="panel-close" onclick="togglePanel(null)">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          
-          <div id="chat-messages" class="chat-messages"></div>
-          
-          <div id="attachment-preview" class="attachment-preview" style="display:none"></div>
-          
-          <div class="chat-input-container">
-            <div class="chat-toolbar">
-              <label class="tool-btn" title="Adjuntar archivo">
-                <span class="material-icons">attach_file</span>
-                <input type="file" id="file-input" hidden multiple onchange="handleFileSelect(event)">
-              </label>
-              <label class="tool-btn" title="Insertar emoji">
-                <span class="material-icons">emoji_emotions</span>
-              </label>
-              <label class="tool-btn" title="Formato">
-                <span class="material-icons">format_size</span>
-              </label>
-            </div>
-            <div class="chat-compose">
-              <textarea id="chat-input" class="chat-textarea" placeholder="Enviar un mensaje a la reunión..." rows="1" oninput="autoResize(this)" onkeydown="handleChatKeydown(event)"></textarea>
-              <button class="btn-send" id="btn-send-message" onclick="sendMessage()" disabled>
-                <span class="material-icons">send</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
+  <!-- HEADER -->
+  <header id="header">
+    <div class="h-brand">
+      <img
+        src="/img/logo-ifd.png"
+        alt="IFD"
+        class="h-logo"
+        onerror="this.style.display='none';document.getElementById('logo-fb').style.display='flex'"
+      >
+      <div id="logo-fb" style="display:none;width:36px;height:36px;border-radius:8px;background:var(--maroon);align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;">IFD</div>
+      <span class="h-name">IFD Meet</span>
     </div>
 
-    <footer class="controls-bar">
-      <div class="controls-left">
-        <span id="ctrl-info" class="ctrl-text"></span>
+    <div class="h-center">
+      <span class="h-time" id="room-time">--:--</span>
+      <span class="h-sep">•</span>
+      <span class="h-code" id="room-code"></span>
+      <button class="icon-btn" onclick="copyLink()" title="Copiar" style="width:28px;height:28px">
+        <span class="material-icons-round" style="font-size:16px">content_copy</span>
+      </button>
+    </div>
+
+    <div class="h-actions">
+      <button class="icon-btn" onclick="openPanel('people')" title="Participantes">
+        <span class="material-icons-round">people</span>
+        <span class="badge" id="badge-people">1</span>
+      </button>
+      <button class="icon-btn" onclick="openPanel('chat')" title="Chat">
+        <span class="material-icons-round">chat</span>
+      </button>
+      <button class="icon-btn" title="Más">
+        <span class="material-icons-round">more_vert</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ÁREA CENTRAL -->
+  <div id="main">
+
+    <div id="video-area">
+      <div id="videos-grid" class="n1"></div>
+    </div>
+
+    <aside id="side-panel">
+      <div class="panel-tabs">
+        <button class="p-tab on" id="tab-people" onclick="switchTab('people')">Personas</button>
+        <button class="p-tab"    id="tab-chat"   onclick="switchTab('chat')">Chat</button>
       </div>
-      
-      <div class="controls-center">
-        <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" title="Silenciar micrófono (M)">
-          <span class="material-icons ctrl-icon" id="icon-mic">mic</span>
-          <span class="ctrl-label">Mic</span>
-        </button>
-        
-        <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()" title="Apagar cámara (E)">
-          <span class="material-icons ctrl-icon" id="icon-cam">videocam</span>
-          <span class="ctrl-label">Cámara</span>
-        </button>
-        
-        <button class="ctrl-btn" id="btn-screen" onclick="toggleScreenShare()" title="Compartir pantalla">
-          <span class="material-icons ctrl-icon">present_to_all</span>
-          <span class="ctrl-label">Presentar</span>
-        </button>
-        
-        <div class="ctrl-divider"></div>
-        
-        <div class="ctrl-dropdown">
-          <button class="ctrl-btn" onclick="toggleReactionsMenu()" title="Reacciones">
-            <span class="material-icons ctrl-icon">emoji_emotions</span>
+
+      <div class="panel-pane on" id="pane-people">
+        <div class="p-list" id="p-list"></div>
+      </div>
+
+      <div class="panel-pane" id="pane-chat">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-row">
+          <textarea
+            id="chat-input"
+            class="chat-textarea"
+            placeholder="Enviar mensaje…"
+            rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+          ></textarea>
+          <button class="chat-send" onclick="sendMessage()">
+            <span class="material-icons-round">send</span>
           </button>
-          <div class="reactions-menu" id="reactions-menu">
-            <button class="reaction-btn" onclick="sendReaction('👍')" title="Me gusta">👍</button>
-            <button class="reaction-btn" onclick="sendReaction('❤️')" title="Me encanta">❤️</button>
-            <button class="reaction-btn" onclick="sendReaction('😂')" title="Me divierte">😂</button>
-            <button class="reaction-btn" onclick="sendReaction('😮')" title="Me sorprende">😮</button>
-            <button class="reaction-btn" onclick="sendReaction('👏')" title="Aplausos">👏</button>
-            <button class="reaction-btn" onclick="sendReaction('🎓')" title="IFD">🎓</button>
-          </div>
         </div>
-        
-        <button class="ctrl-btn ctrl-danger" id="btn-leave" onclick="leaveMeeting()" title="Salir de la reunión">
-          <span class="material-icons ctrl-icon">call_end</span>
-          <span class="ctrl-label">Salir</span>
-        </button>
       </div>
-      
-      <div class="controls-right">
-        <button class="icon-btn-sm" onclick="toggleSettings()" title="Configuración">
-          <span class="material-icons">settings</span>
-        </button>
-      </div>
-    </footer>
+    </aside>
 
-    <div id="waiting-panel" class="waiting-panel" style="display:none">
-      <div class="waiting-panel-header">
-        <span><span class="material-icons">hourglass_empty</span> Personas esperando</span>
-        <button class="waiting-panel-close" onclick="document.getElementById('waiting-panel').style.display='none'">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
-      <div id="waiting-list" class="waiting-list"></div>
-    </div>
-
-    <div id="reactions-overlay"></div>
-
-    <div id="dismissed-overlay" class="dismissed-overlay" style="display:none">
-      <div class="dismissed-card">
-        <span class="material-icons dismissed-icon">meeting_room</span>
-        <h3 id="dismissed-title">No podés entrar a esta reunión</h3>
-        <p id="dismissed-message"></p>
-        <button class="btn btn-primary" onclick="window.location.href='/'">Volver al inicio</button>
-      </div>
-    </div>
   </div>
 
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  
-  <script>
-    const ROOM_ID = "<%= roomId %>";
-    
-    // Variables de usuario
-    var isLoggedIn = false;
-    var currentUser = null;
-    <% if (typeof user !== 'undefined' && user) { %>
-      isLoggedIn = true;
-      currentUser = <%- JSON.stringify(user) %>;
-    <% } %>
-  </script>
-  
-  <script src="/js/room.js"></script>
+  <!-- CONTROLES -->
+  <footer id="controls">
+    <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" title="Micrófono">
+      <span class="material-icons-round" id="icon-mic">mic</span>
+    </button>
+    <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()" title="Cámara">
+      <span class="material-icons-round" id="icon-cam">videocam</span>
+    </button>
+    <button class="ctrl-btn" id="btn-screen" onclick="toggleScreen()" title="Compartir pantalla">
+      <span class="material-icons-round">present_to_all</span>
+    </button>
+    <div class="ctrl-divider"></div>
+    <button class="ctrl-btn" title="Reacciones" onclick="sendQuickReaction()">
+      <span class="material-icons-round">emoji_emotions</span>
+    </button>
+    <button class="ctrl-btn" onclick="openPanel('people')" title="Participantes">
+      <span class="material-icons-round">people</span>
+    </button>
+    <div class="ctrl-divider"></div>
+    <button class="ctrl-btn ctrl-leave" onclick="leaveMeeting()" title="Salir">
+      <span class="material-icons-round">call_end</span>
+    </button>
+  </footer>
+
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  window.ROOM_ID   = "<%= roomId %>";
+  window.IS_HOST   = "<%= typeof user !== 'undefined' && user ? 'true' : 'false' %>" === "true";
+  window.USER_NAME = "<%= typeof user !== 'undefined' && user ? user.name.replace(/'/g, "\\'") : 'Invitado' %>";
+  window.USER_PHOTO= "<%= typeof user !== 'undefined' && user && user.photo ? user.photo : '' %>";
+</script>
+<script>
+const socket = io();
+let miPeer = null, miStream = null, screenStream = null;
+const peers = {}, participantes = {};
+const state = { micOn: true, camOn: true, screenOn: false };
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('room-code').textContent = window.ROOM_ID;
+  iniciarReloj();
+  await iniciarMedia();
+  iniciarPeerJS();
+  renderParticipantes();
+});
+
+async function iniciarMedia() {
+  try {
+    miStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: { echoCancellation: true, noiseSuppression: true }
+    });
+  } catch (err) { console.warn('Sin cámara/mic:', err); }
+  if (miStream) agregarVideo(miStream, 'yo', `Tú (${window.USER_NAME})`, true);
+}
+
+function iniciarPeerJS() {
+  miPeer = new Peer(undefined, {
+    path: '/peerjs',
+    host: location.hostname,
+    port: location.port || (location.protocol === 'https:' ? 443 : 80)
+  });
+  miPeer.on('open', id => {
+    socket.emit('join-room', window.ROOM_ID, id, window.USER_NAME, window.IS_HOST, '', window.USER_PHOTO);
+  });
+  miPeer.on('call', call => {
+    if (miStream) call.answer(miStream);
+    call.on('stream', s => {
+      const p = participantes[call.peer];
+      agregarVideo(s, call.peer, p?.nombre || 'Participante', false);
+    });
+    peers[call.peer] = call;
+  });
+}
+
+socket.on('user-connected', (peerId, nombre) => {
+  participantes[peerId] = { nombre, micOn: true, camOn: true };
+  if (miStream) {
+    setTimeout(() => {
+      const call = miPeer.call(peerId, miStream);
+      if (call) {
+        call.on('stream', s => agregarVideo(s, peerId, nombre, false));
+        peers[peerId] = call;
+      }
+    }, 600);
+  }
+  addSysMsg(`${escHtml(nombre)} se unió`);
+  renderParticipantes();
+  actualizarContador();
+});
+
+socket.on('user-disconnected', peerId => {
+  if (peers[peerId]) { peers[peerId].close(); delete peers[peerId]; }
+  document.getElementById('tile-' + peerId)?.remove();
+  const nombre = participantes[peerId]?.nombre || 'Alguien';
+  delete participantes[peerId];
+  addSysMsg(`${escHtml(nombre)} salió`);
+  renderParticipantes();
+  actualizarContador();
+  ajustarGrid();
+});
+
+socket.on('receive-message', data => renderMensaje(data));
+
+function agregarVideo(stream, id, nombre, esSelf) {
+  let tile = document.getElementById('tile-' + id);
+  if (tile) { tile.querySelector('video').srcObject = stream; return; }
+
+  tile = document.createElement('div');
+  tile.className = 'video-tile' + (esSelf ? ' self' : '');
+  tile.id = 'tile-' + id;
+
+  const ini = nombre.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  tile.innerHTML = `
+    <div class="tile-placeholder" id="ph-${id}">
+      <div class="tile-avatar">${ini}</div>
+    </div>
+    <video autoplay playsinline ${esSelf ? 'muted' : ''}></video>
+    <div class="tile-label">
+      <span class="material-icons-round" id="mic-icon-${id}">mic</span>
+      ${escHtml(nombre)}
+    </div>
+  `;
+
+  const video = tile.querySelector('video');
+  video.srcObject = stream;
+  video.onloadedmetadata = () => {
+    const ph = document.getElementById('ph-' + id);
+    if (ph) ph.style.display = 'none';
+  };
+
+  document.getElementById('videos-grid').appendChild(tile);
+  ajustarGrid();
+}
+
+function ajustarGrid() {
+  const grid = document.getElementById('videos-grid');
+  const n = grid.children.length;
+  grid.className = 'n' + Math.min(n, 6);
+}
+
+function toggleMic() {
+  if (!miStream) return;
+  state.micOn = !state.micOn;
+  miStream.getAudioTracks().forEach(t => t.enabled = state.micOn);
+  document.getElementById('btn-mic').classList.toggle('muted', !state.micOn);
+  document.getElementById('icon-mic').textContent = state.micOn ? 'mic' : 'mic_off';
+}
+
+function toggleCam() {
+  if (!miStream) return;
+  state.camOn = !state.camOn;
+  miStream.getVideoTracks().forEach(t => t.enabled = state.camOn);
+  document.getElementById('btn-cam').classList.toggle('muted', !state.camOn);
+  document.getElementById('icon-cam').textContent = state.camOn ? 'videocam' : 'videocam_off';
+  const ph = document.getElementById('ph-yo');
+  if (ph) ph.style.display = state.camOn ? 'none' : 'flex';
+}
+
+async function toggleScreen() {
+  if (state.screenOn) {
+    screenStream?.getTracks().forEach(t => t.stop());
+    screenStream = null;
+    state.screenOn = false;
+    document.getElementById('btn-screen').classList.remove('screen-on');
+    if (miStream) {
+      const tile = document.getElementById('tile-yo');
+      if (tile) tile.querySelector('video').srcObject = miStream;
+    }
+    return;
+  }
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    state.screenOn = true;
+    document.getElementById('btn-screen').classList.add('screen-on');
+    const track = screenStream.getVideoTracks()[0];
+    Object.values(peers).forEach(call => {
+      const sender = call.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) sender.replaceTrack(track);
+    });
+    const myVideo = document.querySelector('#tile-yo video');
+    if (myVideo) myVideo.srcObject = screenStream;
+    track.onended = toggleScreen;
+  } catch(e) { console.log('Cancelado'); }
+}
+
+function sendQuickReaction() {
+  const emojis = ['👍','❤️','😂','👏','🔥'];
+  const e = emojis[Math.floor(Math.random() * emojis.length)];
+  const el = document.createElement('div');
+  el.textContent = e;
+  el.style.cssText = `position:fixed;bottom:90px;left:${20+Math.random()*60}%;font-size:32px;z-index:999;pointer-events:none;transition:all 2s ease`;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.transform = 'translateY(-120px)'; el.style.opacity = '0'; }, 50);
+  setTimeout(() => el.remove(), 2100);
+}
+
+function leaveMeeting() {
+  if (!confirm('¿Salir de la reunión?')) return;
+  Object.values(peers).forEach(c => c.close());
+  miStream?.getTracks().forEach(t => t.stop());
+  screenStream?.getTracks().forEach(t => t.stop());
+  socket.disconnect();
+  location.href = '/';
+}
+
+let panelOpen = false, activeTab = 'people';
+
+function openPanel(tab) {
+  const panel = document.getElementById('side-panel');
+  if (panelOpen && activeTab === tab) {
+    panel.classList.remove('open');
+    panelOpen = false;
+  } else {
+    panel.classList.add('open');
+    panelOpen = true;
+    switchTab(tab);
+  }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  ['people','chat'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('on', t === tab);
+    document.getElementById('pane-' + t).classList.toggle('on', t === tab);
+  });
+}
+
+function renderParticipantes() {
+  const list = document.getElementById('p-list');
+  const todos = [
+    { nombre: window.USER_NAME, role: 'Tú', micOn: state.micOn, camOn: state.camOn }
+  ].concat(Object.values(participantes).map(p => ({ nombre: p.nombre, micOn: p.micOn ?? true, camOn: p.camOn ?? true })));
+
+  list.innerHTML = todos.map(p => {
+    const ini = p.nombre.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+    return `
+      <div class="p-item">
+        <div class="p-ava">${ini}</div>
+        <div style="flex:1">
+          <div class="p-name">${escHtml(p.nombre)}</div>
+          ${p.role ? `<div class="p-role">${p.role}</div>` : ''}
+        </div>
+        <div class="p-icons">
+          <span class="material-icons-round ${p.micOn ? '' : 'm'}">${p.micOn ? 'mic' : 'mic_off'}</span>
+          <span class="material-icons-round">${p.camOn ? 'videocam' : 'videocam_off'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function actualizarContador() {
+  document.getElementById('badge-people').textContent = Object.keys(participantes).length + 1;
+}
+
+function renderMensaje(data) {
+  const c = document.getElementById('chat-msgs');
+  const own = data.nombre === window.USER_NAME;
+  const now = new Date();
+  const hora = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const div = document.createElement('div');
+  div.className = 'c-msg' + (own ? ' own' : '');
+  div.innerHTML = `
+    ${!own ? `<div class="c-meta"><span class="c-name">${escHtml(data.nombre)}</span><span class="c-time">${hora}</span></div>` : ''}
+    <div class="c-bubble">${escHtml(data.texto)}</div>
+    ${own ? `<div class="c-meta" style="justify-content:flex-end"><span class="c-time">${hora}</span></div>` : ''}
+  `;
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+}
+
+function addSysMsg(txt) {
+  const c = document.getElementById('chat-msgs');
+  const div = document.createElement('div');
+  div.className = 'c-sys';
+  div.textContent = txt;
+  c.appendChild(div);
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const texto = input.value.trim();
+  if (!texto) return;
+  socket.emit('send-message', { roomId: window.ROOM_ID, nombre: window.USER_NAME, texto, tipo: 'text' });
+  renderMensaje({ nombre: window.USER_NAME, texto });
+  input.value = '';
+}
+
+function iniciarReloj() {
+  const upd = () => {
+    const n = new Date();
+    document.getElementById('room-time').textContent =
+      n.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' });
+  };
+  upd(); setInterval(upd, 30000);
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(location.href.split('?')[0])
+    .then(() => alert('✅ Enlace copiado'));
+}
+
+function escHtml(t) {
+  if (!t) return '';
+  return t.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+</script>
 </body>
 </html>
