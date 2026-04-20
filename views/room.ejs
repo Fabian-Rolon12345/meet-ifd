@@ -776,7 +776,10 @@
 //  LOBBY
 // ══════════════════════════════════════
 let lobbyStream = null, lobbyMicOn = true, lobbyCamOn = true;
-const roomLink = (window.APP_URL || location.origin) + '/sala/' + window.ROOM_ID;
+// ✅ Forzar URL de producción con fallback
+const roomLink = window.APP_URL 
+  ? window.APP_URL + '/sala/' + window.ROOM_ID 
+  : 'https://meet-ifd.onrender.com/sala/' + window.ROOM_ID;
 document.getElementById('lobby-link').value = roomLink;
 
 (async () => {

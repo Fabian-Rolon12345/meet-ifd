@@ -17,7 +17,10 @@ const path = require("path");
 
 // ================= CONFIGURACIÓN GLOBAL =================
 const PORT = process.env.PORT || 3000;
-const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+// ✅ Forzar URL de producción cuando está en Render
+const APP_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://meet-ifd.onrender.com'  // ← Tu URL real
+  : process.env.APP_URL || `http://localhost:${PORT}`;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 // ================= EXPRESS CONFIG =================
