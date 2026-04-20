@@ -276,6 +276,7 @@ io.on("connection", (socket) => {
     };
 
     // Si es host o el mismo usuario que creó la sala
+    // ✅ TEMPORAL: Permitir entrada directa a todos (sacar esto después)
     if (isHost || rooms[roomId].hostUserId === userId) {
       rooms[roomId].host = socket.id;
       rooms[roomId].hostUserId = userId;
@@ -292,7 +293,6 @@ io.on("connection", (socket) => {
       socket.emit("waiting-list", waitingRooms[roomId]);
       return;
     }
-
     // Si no es host, agregar a lista de espera
     const waitData = { 
       socketId: socket.id, 

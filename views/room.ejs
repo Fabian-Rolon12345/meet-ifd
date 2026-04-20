@@ -765,11 +765,18 @@
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+  <script>
   window.ROOM_ID    = "<%- roomId %>";
   window.IS_HOST    = "<%= typeof user !== 'undefined' && user ? 'true' : 'false' %>" === "true";
   window.USER_NAME  = "<%- typeof user !== 'undefined' && user ? user.name.replace(/\\/g,'\\\\').replace(/"/g,'\\"') : 'Invitado' %>";
   window.USER_PHOTO = "<%= typeof user !== 'undefined' && user && user.photo ? user.photo : '' %>";
   window.APP_URL    = "<%= typeof APP_URL !== 'undefined' ? APP_URL : '' %>";
+  
+  // ✅ Verificar si es host por URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('host') === '1') {
+    window.IS_HOST = true;
+  }
 </script>
 <script>
 // ══════════════════════════════════════
