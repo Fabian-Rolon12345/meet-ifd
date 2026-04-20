@@ -823,27 +823,28 @@ function lobbyCopiarLink() {
 }
 
 function entrarSala() {
-  if (lobbyStream) { lobbyStream.getTracks().forEach(t => t.stop()); lobbyStream = null; }
+  if (lobbyStream) { 
+    lobbyStream.getTracks().forEach(t => t.stop()); 
+    lobbyStream = null; 
+  }
+  
   document.getElementById('lobby').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  iniciarSala();
-}
-
-// ══════════════════════════════════════
-//  SALA
-// ══════════════════════════════════════
-const socket = io();
-let miPeer = null, miStream = null, screenStream = null;
-const peers = {}, participantes = {};
-const state = { micOn: true, camOn: true, screenOn: false, handOn: false, ccOn: false };
-
-async function iniciarSala() {
-  document.getElementById('room-code').textContent = window.ROOM_ID;
-  document.getElementById('ctrl-code').textContent = window.ROOM_ID;
-  iniciarReloj();
-  await iniciarMedia();
-  iniciarPeerJS();
-  renderParticipantes();
+  
+  // ✅ Si es HOST → entra directo
+  if (window.IS_HOST) {
+    iniciarSala();
+  } 
+  // ❌ Si es INVITADO → muestra espera y envía solicitud
+  else {
+    document.getElementById('lobby-cam-off').style.display = 'none';
+    document.getElementById('screen-waiting').style.display = 'flex';
+    document.getElementById('screen-room').style.display = 'none';
+    document.getElementById('waiting-message').textContent = 'Esperando que el anfitrión te admita...';
+    
+    // Iniciar sala pero esperar aprobación
+    iniciarSala();
+  }
 }
 
 async function iniciarMedia() {

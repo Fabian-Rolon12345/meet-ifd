@@ -249,7 +249,6 @@ io.on("connection", (socket) => {
   
   // Unirse a una sala
   socket.on("join-room", (roomId, userId, userName, isHost, userEmail, userPhoto) => {
-    
     // Crear sala si no existe
     if (!rooms[roomId]) {
       rooms[roomId] = { 
@@ -260,23 +259,17 @@ io.on("connection", (socket) => {
       };
     }
     
-    // Inicializar lista de espera si no existe
     if (!waitingRooms[roomId]) {
       waitingRooms[roomId] = [];
     }
     
     // Registrar participante
     rooms[roomId].participants[socket.id] = { 
-      userId, 
-      userName, 
-      userEmail, 
-      userPhoto, 
-      socketId: socket.id, 
-      joinedAt: Date.now() 
+      userId, userName, userEmail, userPhoto, 
+      socketId: socket.id, joinedAt: Date.now() 
     };
-
-    // Si es host o el mismo usuario que creó la sala
-    // ✅ TEMPORAL: Permitir entrada directa a todos (sacar esto después)
+  
+    // ✅ Si es HOST → entra directo
     if (isHost || rooms[roomId].hostUserId === userId) {
       rooms[roomId].host = socket.id;
       rooms[roomId].hostUserId = userId;
@@ -293,13 +286,11 @@ io.on("connection", (socket) => {
       socket.emit("waiting-list", waitingRooms[roomId]);
       return;
     }
-    // Si no es host, agregar a lista de espera
+  
+    // ❌ Si NO es host → agregar a lista de espera
     const waitData = { 
       socketId: socket.id, 
-      userId, 
-      userName, 
-      userEmail, 
-      userPhoto, 
+      userId, userName, userEmail, userPhoto, 
       requestedAt: Date.now() 
     };
     
