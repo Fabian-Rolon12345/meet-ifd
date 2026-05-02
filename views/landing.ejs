@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IFD Meet - Videoconferencias</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+  <link rel="stylesheet" href="/css/landing.css?v=2">
+</head>
+<body>
+  
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <img src="/img/logo-ifd.png" alt="IFD" class="logo" onerror="this.style.display='none'">
+      <span class="brand">IFD Meet</span>
+    </div>
+    <div class="header-right">
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="user-menu">
+          <img src="<%= user.photo || '' %>" alt="<%= user.name %>" class="user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=<%= encodeURIComponent(user.name) %>&background=6d1a2e&color=fff'">
+          <span class="user-name"><%= user.name.split(' ')[0] %></span>
+        </div>
+        <a href="/logout" class="btn-logout" title="Cerrar sesión">
+          <span class="material-icons-round">logout</span>
+        </a>
+      <% } else { %>
+        <a href="/auth/google" class="btn-signin">
+          <img src="https://www.google.com/favicon.ico" alt="Google" style="width:16px;height:16px;margin-right:8px">
+          Iniciar sesión
+        </a>
+      <% } %>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    
+    <!-- LEFT SIDE -->
+    <div class="left-section">
+      <div class="content-wrapper">
+        <h1 class="title">Videoconferencias seguras para el IFD</h1>
+        <p class="subtitle">Conectá con tus compañeros y docentes en tiempo real.</p>
+        
+        <% if (typeof user === 'undefined' || !user) { %>
+          <div class="signin-prompt">
+            <span class="material-icons-round">hand_wave</span>
+            <div>
+              <p class="prompt-title">Iniciar sesión para acceder a todas las funciones</p>
+              <p class="prompt-desc">Ingresá con Google para crear reuniones</p>
+            </div>
+          </div>
+        <% } %>
+        
+        <!-- ACTION BUTTONS -->
+        <div class="actions">
+          <div class="new-meeting-wrapper">
+            <button class="btn-primary btn-large" onclick="<%= typeof user !== 'undefined' && user ? 'toggleDropdown()' : 'showSigninPrompt()' %>">
+              <span class="material-icons-round">video_camera_front</span>
+              Nueva reunión
+              <span class="material-icons-round dropdown-arrow">expand_more</span>
+            </button>
+            
+            <div class="dropdown-menu" id="meeting-dropdown" style="display:none">
+              <div class="dropdown-item" onclick="<%= typeof user !== 'undefined' && user ? 'startInstantMeeting()' : 'showSigninPrompt()' %>">
+                <span class="material-icons-round" style="color:#00796b">videocam</span>
+                <div class="dropdown-text">
+                  <span class="dropdown-title">Iniciar reunión instantánea</span>
+                  <span class="dropdown-desc">Comenzar una videollamada ahora</span>
+                </div>
+              </div>
+              <div class="dropdown-item" onclick="<%= typeof user !== 'undefined' && user ? 'createMeetingLink()' : 'showSigninPrompt()' %>">
+                <span class="material-icons-round" style="color:#1a73e8">link</span>
+                <div class="dropdown-text">
+                  <span class="dropdown-title">Crear enlace para más tarde</span>
+                  <span class="dropdown-desc">Generar un link para compartir</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="join-section">
+            <input type="text" id="room-code-input" class="input-code" placeholder="Ingresar código o enlace" oninput="toggleJoinButton()">
+            <button class="btn-join" id="btn-join" disabled onclick="joinWithCode()">
+              <span class="material-icons-round">login</span>
+              Unirse
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE - IFD CARD -->
+    <div class="right-section">
+      <div class="ifd-card">
+        <div class="ifd-card-content">
+          <img src="/img/logo-ifd.png" alt="IFD" class="ifd-card-logo" onerror="this.style.display='none'">
+          <h3 class="ifd-title">Instituto de Formación Docente</h3>
+          <p class="ifd-location">Santa Rosa, Misiones · Paraguay</p>
+          <p class="ifd-res">Res. N°43 del 02-07-1997</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="link-modal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Tu reunión está lista</h3>
+        <button class="modal-close" onclick="closeModal()">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text">Compartí este enlace:</p>
+        <div class="link-container">
+          <input type="text" id="generated-link" readonly>
+          <button class="btn-copy" onclick="copyLink()">
+            <span class="material-icons-round">content_copy</span>
+            Copiar
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+        <button class="btn-primary" onclick="goToMeeting()">Entrar como anfitrión</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast-container"></div>
+
+  <script>
+    let pendingLink = "";
+    const isLoggedIn = <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>;
+    
+    function toggleDropdown() {
+      const dropdown = document.getElementById('meeting-dropdown');
+      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    function showSigninPrompt() {
+      showToast('🔐 Iniciá sesión para crear reuniones', 'info');
+    }
+    
+    function startInstantMeeting() {
+      if (!isLoggedIn) { showSigninPrompt(); return; }
+      window.location.href = '/nueva';
+    }
+    
+    function createMeetingLink() {
+      if (!isLoggedIn) { showSigninPrompt(); return; }
+      pendingLink = location.origin + '/sala/' + generateRoomId();
+      document.getElementById('generated-link').value = pendingLink;
+      document.getElementById('link-modal').style.display = 'flex';
+      document.getElementById('meeting-dropdown').style.display = 'none';
+    }
+    
+    function closeModal() {
+      document.getElementById('link-modal').style.display = 'none';
+    }
+    
+    function copyLink() {
+      const input = document.getElementById('generated-link');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast('✅ Enlace copiado', 'success');
+      });
+    }
+    
+    function goToMeeting() {
+      if (!isLoggedIn) return;
+      window.location.href = '/nueva';
+    }
+    
+    function toggleJoinButton() {
+      const input = document.getElementById('room-code-input');
+      const btn = document.getElementById('btn-join');
+      btn.disabled = !input.value.trim();
+    }
+    
+    function joinWithCode() {
+      let code = document.getElementById('room-code-input').value.trim();
+      if (code.includes('/sala/')) {
+        const match = code.match(/\/sala\/([a-zA-Z0-9\-]+)/);
+        if (match) code = match[1];
+      }
+      if (code) window.location.href = '/sala/' + code;
+    }
+    
+    function generateRoomId() {
+      return Math.random().toString(36).substr(2,4) + '-' + 
+             Math.random().toString(36).substr(2,4) + '-' + 
+             Math.random().toString(36).substr(2,4);
+    }
+    
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-' + type;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
+    // Cerrar dropdown al hacer click fuera
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.new-meeting-wrapper')) {
+        document.getElementById('meeting-dropdown').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

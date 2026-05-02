@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IFD Meet - Reunión</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#202124;--surface:#2d2e31;--elevated:#3c4043;
+      --maroon:#6d1a2e;--maroon-d:#4a1220;
+      --red:#ea4335;--green:#1e8e3e;
+      --t1:#e8eaed;--t2:#9aa0a6;--brd:rgba(255,255,255,0.1);
+    }
+    html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background:var(--bg);color:var(--t1)}
+
+    /* ══════════ MODAL IFD PASSWORD ══════════ */
+    #ifd-modal{
+      position:fixed;inset:0;z-index:99999;
+      background:rgba(0,0,0,0.9);backdrop-filter:blur(12px);
+      display:none;align-items:center;justify-content:center;padding:20px;
+    }
+    #ifd-modal.show{display:flex}
+    .ifd-card{
+      background:#fff;border-radius:24px;padding:40px 36px;
+      width:100%;max-width:430px;color:#202124;
+      box-shadow:0 28px 72px rgba(0,0,0,.6);
+      position:relative;overflow:hidden;
+      animation:modalIn .4s cubic-bezier(0.16,1,0.3,1);
+    }
+    .ifd-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#6d1a2e,#a02040,#6d1a2e)}
+    @keyframes modalIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .ifd-logo{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 10px 28px rgba(109,26,46,.4);overflow:hidden}
+    .ifd-logo img{width:100%;height:100%;object-fit:cover;border-radius:18px}
+    .ifd-logo .fb{font-size:34px}
+    .ifd-card h2{font-family:'Google Sans',sans-serif;font-size:23px;font-weight:700;text-align:center;margin-bottom:4px}
+    .ifd-sub{font-size:13px;color:#5f6368;text-align:center;line-height:1.5;margin-bottom:24px}
+    .ifd-dots{display:flex;gap:7px;justify-content:center;margin-bottom:22px}
+    .ifd-dot{width:8px;height:8px;border-radius:50%;background:#ddd;transition:background .3s}
+    .ifd-dot.on{background:#6d1a2e}
+    .ifd-user{display:flex;align-items:center;gap:11px;background:#f8f9fa;border-radius:12px;padding:11px 15px;margin-bottom:20px;border:1px solid #e8eaed}
+    .ifd-ava{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #dadce0;flex-shrink:0}
+    .ifd-ava-ph{width:40px;height:40px;border-radius:50%;background:#6d1a2e;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .ifd-uname{font-size:13.5px;font-weight:600}
+    .ifd-uemail{font-size:11.5px;color:#888}
+    .ifd-lbl{display:block;font-size:11px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px}
+    .ifd-iw{position:relative;margin-bottom:6px}
+    .ifd-iw input{width:100%;padding:13px 44px 13px 14px;border:2px solid #e0e0e0;border-radius:11px;font-size:15px;font-family:inherit;color:#202124;background:#fafafa;letter-spacing:1.5px;transition:border-color .2s,box-shadow .2s}
+    .ifd-iw input:focus{outline:none;border-color:#6d1a2e;box-shadow:0 0 0 3px rgba(109,26,46,.12);background:#fff}
+    .ifd-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#aaa}
+    .ifd-eye:hover{color:#6d1a2e}
+    .ifd-hint{font-size:12px;color:#aaa;margin-bottom:16px}
+    .ifd-err{background:#fce8e6;border:1px solid #f5c6c4;border-radius:9px;padding:9px 13px;font-size:13px;color:#c62828;display:none;align-items:center;gap:7px;margin-bottom:14px}
+    .ifd-err.show{display:flex;animation:shake .3s}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+    .ifd-ok{background:#e8f5e9;border:1px solid #c8e6c9;border-radius:9px;padding:9px 13px;font-size:13px;color:#2e7d32;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+    .ifd-btn{width:100%;padding:14px;border:none;border-radius:11px;background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:12px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(109,26,46,.35)}
+    .ifd-btn:hover{transform:translateY(-1px);box-shadow:0 7px 26px rgba(109,26,46,.45)}
+    .ifd-btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+    .ifd-div{text-align:center;color:#ccc;font-size:12px;margin:2px 0 12px;position:relative}
+    .ifd-div::before,.ifd-div::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:#e8eaed}
+    .ifd-div::before{left:0}.ifd-div::after{right:0}
+    .ifd-gbtn{width:100%;padding:12px;border:1.5px solid #dadce0;border-radius:11px;background:#fff;color:#202124;font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;transition:background .2s,box-shadow .2s;margin-bottom:8px}
+    .ifd-gbtn:hover{background:#f8f9fa;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    .ifd-gbtn img{width:17px}
+    .ifd-back{width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:11px;background:transparent;color:#888;font-size:13px;font-family:inherit;cursor:pointer;transition:background .2s}
+    .ifd-back:hover{background:#f5f5f5}
+    .ifd-spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ══════════ MODAL SALA DE ESPERA ══════════ */
+    #waiting-modal{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
+    #waiting-modal.show{display:flex}
+    .wcard{background:#fff;border-radius:22px;padding:40px 32px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.4);animation:modalIn .4s ease}
+    .wicon{width:72px;height:72px;border-radius:50%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 18px}
+    .wcard h3{font-family:'Google Sans',sans-serif;font-size:20px;color:#202124;margin-bottom:8px}
+    .wcard p{color:#666;font-size:14px;margin-bottom:0}
+    .wbar{width:100%;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden;margin:20px 0}
+    .wbar-fill{height:100%;width:35%;background:linear-gradient(90deg,#6d1a2e,#a02040);border-radius:2px;animation:wbar 1.8s ease-in-out infinite}
+    @keyframes wbar{0%{transform:translateX(-100%)}100%{transform:translateX(380%)}}
+    .wcancel{padding:10px 26px;background:#f5f5f5;border:none;border-radius:9px;cursor:pointer;color:#666;font-family:inherit;font-size:14px;transition:background .2s}
+    .wcancel:hover{background:#fce8e6;color:#c62828}
+
+    /* ══════════ PANEL SOLICITUDES HOST ══════════ */
+    #req-panel{position:fixed;top:80px;right:16px;z-index:9000;width:316px;display:none;flex-direction:column}
+    #req-panel.show{display:flex}
+    .rph{background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;padding:11px 15px;border-radius:14px 14px 0 0;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+    .rph-badge{background:rgba(255,255,255,.25);border-radius:10px;padding:2px 8px;font-size:12px;font-weight:700}
+    .rpl{background:#fff;border-radius:0 0 14px 14px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden;max-height:70vh;overflow-y:auto}
+    .rpi{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #f5f5f5}
+    .rpi:last-child{border-bottom:none}
+    .rpi-ava{width:38px;height:38px;border-radius:50%;background:#6d1a2e;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+    .rpi-ava img{width:100%;height:100%;object-fit:cover}
+    .rpi-info{flex:1;min-width:0}
+    .rpi-name{font-size:13px;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rpi-email{font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rpi-btns{display:flex;gap:5px;flex-shrink:0}
+    .btn-admit{padding:6px 11px;background:#1e8e3e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:background .2s}
+    .btn-admit:hover{background:#137333}
+    .btn-reject{padding:6px 10px;background:#f5f5f5;color:#c62828;border:1px solid #ffcdd2;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:background .2s}
+    .btn-reject:hover{background:#fce8e6}
+
+    /* ══════════ EMOJI PICKER ══════════ */
+    #emoji-picker{
+      position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+      background:#2d2e31;border:1px solid rgba(255,255,255,.15);
+      border-radius:16px;padding:14px 16px;z-index:5000;
+      box-shadow:0 12px 40px rgba(0,0,0,.5);
+      display:none;flex-wrap:wrap;gap:8px;max-width:320px;justify-content:center;
+      animation:emojiIn .2s ease;
+    }
+    #emoji-picker.show{display:flex}
+    @keyframes emojiIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    .ep-btn{font-size:26px;cursor:pointer;padding:6px;border-radius:10px;border:none;background:transparent;transition:transform .15s,background .15s;line-height:1}
+    .ep-btn:hover{transform:scale(1.3);background:rgba(255,255,255,.1)}
+
+    /* ══════════ MIROTALK IFRAME INTEGRADO ══════════ */
+    #miro-overlay{
+      position:fixed;inset:0;z-index:99999;
+      background:#000;
+      display:none;flex-direction:column;
+    }
+    #miro-overlay.show{display:flex}
+    #miro-topbar{
+      height:52px;background:linear-gradient(135deg,#6d1a2e,#a02040);
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 20px;flex-shrink:0;
+    }
+    #miro-topbar-left{display:flex;align-items:center;gap:12px;color:#fff}
+    #miro-topbar-left span{font-size:15px;font-weight:600;font-family:'Google Sans',sans-serif}
+    #miro-topbar-right{display:flex;gap:10px}
+    .miro-tb-btn{
+      padding:8px 18px;border:none;border-radius:20px;
+      font-size:13px;font-weight:600;cursor:pointer;
+      display:flex;align-items:center;gap:6px;transition:.15s;
+    }
+    .miro-tb-volver{background:rgba(255,255,255,.15);color:#fff;}
+    .miro-tb-volver:hover{background:rgba(255,255,255,.28)}
+    .miro-tb-salir{background:#fff;color:#6d1a2e;}
+    .miro-tb-salir:hover{background:#f5e6e8}
+    #miro-iframe{flex:1;border:none;width:100%;height:100%}
+
+    /* ══════════ MIROTALK ══════════ */
+    .ljoin-mirotalk{
+      background:linear-gradient(135deg,#6d1a2e,#a02040)!important;
+      box-shadow:0 6px 24px rgba(109,26,46,.45)!important;
+      font-size:15px!important;gap:10px;
+      animation:mPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes mPulse{0%,100%{box-shadow:0 6px 24px rgba(109,26,46,.45)}50%{box-shadow:0 8px 36px rgba(109,26,46,.7),0 0 0 6px rgba(109,26,46,.12)}}
+
+    #mirotalk-modal{
+      position:fixed;inset:0;z-index:99999;
+      background:rgba(0,0,0,.85);backdrop-filter:blur(12px);
+      display:none;align-items:center;justify-content:center;padding:20px;
+    }
+    #mirotalk-modal.show{display:flex}
+    .miro-card{
+      background:#fff;border-radius:24px;padding:36px 32px;
+      width:100%;max-width:460px;color:#202124;
+      box-shadow:0 28px 72px rgba(0,0,0,.6);
+      position:relative;overflow:hidden;
+      animation:modalIn .4s cubic-bezier(0.16,1,0.3,1);
+    }
+    .miro-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#6d1a2e,#a02040,#6d1a2e)}
+    .miro-icon{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;box-shadow:0 10px 28px rgba(109,26,46,.4)}
+    .miro-card h2{font-family:'Google Sans',sans-serif;font-size:22px;font-weight:700;text-align:center;margin-bottom:6px}
+    .miro-desc{font-size:13.5px;color:#5f6368;text-align:center;line-height:1.6;margin-bottom:22px}
+    .miro-features{background:#f8f9fa;border-radius:14px;padding:16px 18px;margin-bottom:22px;display:flex;flex-direction:column;gap:10px}
+    .miro-feat{display:flex;align-items:center;gap:10px;font-size:13.5px;color:#333}
+    .miro-feat-icon{font-size:18px;flex-shrink:0}
+    .miro-room-info{background:#fff3e0;border:1px solid #ffe0b2;border-radius:12px;padding:12px 16px;margin-bottom:22px;font-size:13px;color:#e65100;display:flex;align-items:center;gap:8px}
+    .miro-btn-main{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:10px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(109,26,46,.35);display:flex;align-items:center;justify-content:center;gap:10px}
+    .miro-btn-main:hover{transform:translateY(-1px);box-shadow:0 7px 26px rgba(109,26,46,.45)}
+    .miro-btn-cancel{width:100%;padding:11px;border:1px solid #e0e0e0;border-radius:12px;background:transparent;color:#888;font-size:14px;font-family:inherit;cursor:pointer;transition:background .2s}
+    .miro-btn-cancel:hover{background:#f5f5f5}
+
+    #mirotalk-frame-modal{
+      position:fixed;inset:0;z-index:99998;
+      background:#000;
+      display:none;flex-direction:column;
+    }
+    #mirotalk-frame-modal.show{display:flex}
+    .mf-header{height:48px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+    .mf-title{color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+    .mf-close{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+    .mf-close:hover{background:rgba(255,255,255,.35)}
+    #mirotalk-iframe{flex:1;border:none;width:100%}
+
+    /* ══════════ FIN MIROTALK ══════════ */
+    #rec-ind{display:none;align-items:center;gap:6px;background:rgba(234,67,53,.15);border:1px solid rgba(234,67,53,.4);border-radius:20px;padding:5px 12px;font-size:12px;color:#ea4335}
+    #rec-ind.show{display:flex}
+    .rdot{width:7px;height:7px;background:#ea4335;border-radius:50%;animation:rpulse 1s infinite}
+    @keyframes rpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+    #btn-record.recording{background:var(--red)!important}
+
+    /* ══════════ TOAST ══════════ */
+    #toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);padding:11px 22px;border-radius:11px;font-size:14px;font-weight:500;z-index:9997;pointer-events:none;opacity:0;transition:opacity .3s;max-width:380px;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.3)}
+    #toast.show{opacity:1}
+
+    /* ══════════ LOBBY ══════════ */
+    #lobby{position:fixed;inset:0;z-index:1000;background:#111214;display:flex;flex-direction:column}
+    .lhdr{height:64px;display:flex;align-items:center;padding:0 24px;gap:12px;border-bottom:1px solid var(--brd);flex-shrink:0}
+    .lhdr-logo{width:36px;height:36px;border-radius:8px;object-fit:cover}
+    .lhdr-brand{font-family:'Google Sans',sans-serif;font-size:20px;font-weight:500}
+    .lbody{flex:1;display:flex;align-items:center;justify-content:center;gap:40px;padding:32px;flex-wrap:wrap;overflow-y:auto}
+    .lprev{position:relative;width:560px;max-width:100%;aspect-ratio:16/9;background:#1a1a1d;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);flex-shrink:0}
+    #lobby-video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+    .lcamoff{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#1a1a1d}
+    .lcamoff .material-icons-round{font-size:64px;color:#5f6368}
+    .lcamoff .txt{font-size:14px;color:#5f6368}
+    .luser-tag{position:absolute;bottom:16px;left:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);padding:6px 14px;border-radius:20px;font-size:14px;font-weight:500}
+    .lctrl-wrap{position:absolute;bottom:16px;right:16px;display:flex;gap:8px}
+    .lctrl{width:44px;height:44px;border-radius:50%;border:none;background:rgba(60,64,67,.9);color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;backdrop-filter:blur(6px)}
+    .lctrl:hover{background:rgba(82,87,92,.9)}.lctrl.off{background:var(--red)}
+    .lctrl .material-icons-round{font-size:20px}
+    .lpanel{width:340px;max-width:100%;background:#fff;border-radius:16px;padding:28px 24px;color:#202124;box-shadow:0 4px 20px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:20px}
+    .lpanel h2{font-family:'Google Sans',sans-serif;font-size:22px;font-weight:500}
+    .llink-box{display:flex;align-items:center;border:1px solid #dadce0;border-radius:8px;padding:10px 14px;gap:8px;background:#f8f9fa}
+    .llink-box .material-icons-round{font-size:18px;color:#5f6368}
+    .llink-txt{flex:1;font-size:13px;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;border:none;outline:none;cursor:pointer}
+    .lcopy-btn{background:none;border:none;cursor:pointer;color:#1a73e8;padding:4px;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .lcopy-btn:hover{background:rgba(26,115,232,.08)}
+    .lcopy-btn .material-icons-round{font-size:18px}
+    .linfo{font-size:13px;color:#5f6368;line-height:1.5;display:flex;align-items:flex-start;gap:8px}
+    .linfo .material-icons-round{font-size:16px;color:#1a73e8;flex-shrink:0;margin-top:1px}
+    .luser{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #f1f3f4}
+    .luser-ava{width:36px;height:36px;border-radius:50%;object-fit:cover}
+    .luser-name{font-size:13px;color:#202124;font-weight:500}
+    .luser-email{font-size:11px;color:#9aa0a6}
+    .ljoin-btn{width:100%;padding:14px;background:var(--maroon);color:#fff;border:none;border-radius:28px;font-size:15px;font-weight:500;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .ljoin-btn:hover{background:var(--maroon-d);transform:translateY(-1px)}
+    .ljoin-btn .material-icons-round{font-size:20px}
+    .ltoast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999}
+    .ltoast.show{opacity:1}
+
+    /* ══════════ SALA ══════════ */
+    #app{display:flex;flex-direction:column;height:100vh}
+    #header{height:64px;min-height:64px;background:var(--surface);border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;flex-shrink:0}
+    .hbrand{display:flex;align-items:center;gap:10px;flex:1}
+    .hlogo{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0}
+    .hname{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:500;white-space:nowrap}
+    .hcenter{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);padding:7px 14px;border-radius:20px;flex-shrink:0}
+    .htime,.hcode{font-size:14px;color:var(--t2)}
+    .hsep{color:var(--t2);font-size:12px}
+    .hactions{display:flex;align-items:center;gap:4px;flex:1;justify-content:flex-end}
+    .icon-btn{width:40px;height:40px;border-radius:50%;background:transparent;border:none;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;position:relative}
+    .icon-btn:hover{background:rgba(255,255,255,.1);color:var(--t1)}
+    .icon-btn .material-icons-round{font-size:22px}
+    .badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;background:var(--maroon);color:#fff;border-radius:8px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
+    #main{flex:1;display:flex;overflow:hidden;position:relative}
+    #video-area{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;background:var(--bg)}
+    #vgrid{width:100%;height:100%;display:grid;gap:8px;align-content:center;justify-content:center;align-items:center;padding:8px}
+    .vtile{position:relative;background:var(--surface);border-radius:12px;overflow:hidden;aspect-ratio:16/9;min-height:0;border:3px solid transparent;transition:border-color .15s,box-shadow .2s;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+    .vtile.speaking{border-color:#1e8e3e;box-shadow:0 0 0 2px #1e8e3e,0 4px 20px rgba(30,142,62,.3)}
+    .vtile video{width:100%;height:100%;object-fit:cover;display:block}
+    .vtile.self video{transform:scaleX(-1)}
+    .vph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:linear-gradient(135deg,var(--maroon),var(--maroon-d))}
+    .vava{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.15);border:3px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff}
+    .vlbl{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);padding:6px 14px;border-radius:20px;font-size:13.5px;font-weight:500;color:#fff;display:flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+    .vlbl .material-icons-round{font-size:14px}.vlbl .m{color:var(--red)}
+    #side-panel{width:360px;background:var(--surface);border-left:1px solid var(--brd);display:none;flex-direction:column;flex-shrink:0;z-index:50}
+    #side-panel.open{display:flex}
+    .ptabs{display:flex;border-bottom:1px solid var(--brd);flex-shrink:0}
+    .ptab{flex:1;padding:14px 8px;text-align:center;font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+    .ptab.on{color:var(--t1);border-bottom-color:var(--maroon)}.ptab:hover:not(.on){color:var(--t1)}
+    .ptab .material-icons-round{font-size:16px}
+    .ppane{display:none;flex:1;flex-direction:column;overflow:hidden}.ppane.on{display:flex}
+    .plist{flex:1;overflow-y:auto;padding:8px}
+    .pitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;transition:.15s}.pitem:hover{background:rgba(255,255,255,.05)}
+    .pava{width:38px;height:38px;border-radius:50%;background:var(--maroon);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#fff;flex-shrink:0}
+    .pname{flex:1;font-size:14px;font-weight:500}.prole{font-size:11px;color:#f9ab00}
+    .picons{display:flex;gap:4px;color:var(--t2)}.picons .material-icons-round{font-size:16px}.picons .m{color:var(--red)}
+    .chat-msgs{flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:4px;scroll-behavior:smooth;background:#1a1a1d}
+    .chat-msgs::-webkit-scrollbar{width:4px}.chat-msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+    .cmsg{display:flex;flex-direction:column;max-width:82%;animation:msgIn .18s ease}
+    @keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .cmsg.own{align-self:flex-end;align-items:flex-end}.cmsg.other{align-self:flex-start}
+    .cname{font-size:11px;font-weight:600;color:#9aa0a6;margin-bottom:3px;padding-left:2px}
+    .cbub{background:#2d2e31;color:#e8eaed;padding:9px 13px;border-radius:18px 18px 18px 4px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+    .cmsg.own .cbub{background:#6d1a2e;border-radius:18px 18px 4px 18px}
+    .ctime{font-size:10px;color:#5f6368;margin-top:3px;padding:0 2px}
+    .csys{text-align:center;font-size:11px;color:#5f6368;padding:6px 0;font-style:italic}
+    .cdatesep{text-align:center;font-size:11px;color:#5f6368;padding:8px 0;display:flex;align-items:center;gap:8px}
+    .cdatesep::before,.cdatesep::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07)}
+    .cimgw{position:relative;max-width:240px;border-radius:14px;overflow:hidden;cursor:zoom-in;background:#2d2e31}
+    .cimgw img{width:100%;display:block;border-radius:14px;transition:filter .15s}.cimgw:hover img{filter:brightness(.82)}
+    .cimgo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;color:#fff}.cimgw:hover .cimgo{opacity:1}
+    .cimgdl{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);border:none;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .15s;text-decoration:none}.cimgw:hover .cimgdl{opacity:1}
+    .cimgdl .material-icons-round{font-size:16px}
+    .cfile{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.07);padding:10px 14px;border-radius:12px;max-width:260px;text-decoration:none;color:#e8eaed;transition:background .15s}.cfile:hover{background:rgba(255,255,255,.13)}
+    .cfile-icon{font-size:26px;flex-shrink:0}
+    .cfile-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+    .cfile-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cfile-size{font-size:11px;color:#9aa0a6}
+    .cfile-dl .material-icons-round{font-size:20px;color:#9aa0a6}
+    #attach-prev{background:#252528;border-top:1px solid rgba(255,255,255,.08);padding:10px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+    #attach-prev-inner{flex:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .pthumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;background:#3c3c3c;flex-shrink:0}
+    .pthumb img{width:100%;height:100%;object-fit:cover}
+    .pfile-info{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);padding:8px 12px;border-radius:10px;font-size:13px;color:#e8eaed;max-width:200px}
+    .pfile-info .material-icons-round{font-size:22px;color:#9aa0a6}
+    .pfile-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .acancel{background:rgba(255,255,255,.1);border:none;color:#9aa0a6;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .acancel:hover{background:rgba(255,255,255,.18);color:#fff}.acancel .material-icons-round{font-size:18px}
+    .cin-row{display:flex;align-items:flex-end;gap:6px;padding:10px;border-top:1px solid rgba(255,255,255,.08);background:#202124;flex-shrink:0}
+    .ctool-btn{width:36px;height:36px;border-radius:50%;background:transparent;border:none;color:#9aa0a6;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+    .ctool-btn:hover{background:rgba(255,255,255,.1);color:#e8eaed}.ctool-btn .material-icons-round{font-size:20px}
+    .ctextarea{flex:1;background:#2d2e31;border:1px solid rgba(255,255,255,.1);border-radius:20px;color:#e8eaed;padding:9px 15px;font-family:inherit;font-size:14px;resize:none;outline:none;min-height:38px;max-height:130px;line-height:1.45;transition:border-color .15s;overflow-y:auto}
+    .ctextarea:focus{border-color:#6d1a2e}.ctextarea::placeholder{color:#5f6368}
+    .csend{width:38px;height:38px;border-radius:50%;background:#6d1a2e;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+    .csend:hover{background:#4a1220;transform:scale(1.08)}.csend .material-icons-round{font-size:20px}
+    #controls{height:76px;min-height:76px;background:var(--surface);border-top:1px solid var(--brd);display:flex;align-items:center;justify-content:center;padding:0 20px;flex-shrink:0;z-index:100;gap:8px}
+    .ctrl-btn{width:48px;height:48px;border-radius:50%;border:none;background:var(--elevated);color:var(--t1);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+    .ctrl-btn:hover{background:rgba(255,255,255,.15);transform:translateY(-1px)}.ctrl-btn .material-icons-round{font-size:22px}
+    .ctrl-btn.muted{background:var(--red)}.ctrl-btn.screen-on{background:rgba(0,121,107,.9)}
+    .cdiv{width:1px;height:30px;background:var(--brd);margin:0 4px}
+    .ctrl-leave{background:var(--red);width:56px;height:48px;border-radius:28px}.ctrl-leave:hover{background:#c5291e}
+    #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);cursor:zoom-out}
+    #lbx-inner{position:relative;max-width:90vw;max-height:90vh;cursor:default}
+    #lbx-img{max-width:90vw;max-height:82vh;border-radius:12px;display:block;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+    .lbx-close{position:absolute;top:-16px;right:-16px;background:rgba(0,0,0,.7);border:none;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .lbx-dl{position:absolute;bottom:-52px;left:50%;transform:translateX(-50%);background:#6d1a2e;color:#fff;border-radius:20px;padding:9px 24px;font-size:14px;font-weight:500;text-decoration:none;display:flex;align-items:center;gap:6px;white-space:nowrap}
+    .lbx-dl:hover{background:#4a1220}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+    /* ══ LEVANTAR MANO ══ */
+    .hand-badge{position:absolute;top:8px;right:8px;background:#f9ab00;color:#000;border-radius:50%;width:32px;height:32px;display:none;align-items:center;justify-content:center;font-size:18px;z-index:10;animation:handPulse 1s infinite}
+    .hand-badge.show{display:flex}
+    @keyframes handPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+    .btn-hand-active{background:#f9ab00!important;color:#000!important}
+
+    /* ══ VISTA PRESENTADOR ══ */
+    #vgrid.presenter-mode{grid-template-columns:1fr 220px!important;grid-template-rows:1fr!important}
+    #vgrid.presenter-mode .vtile{aspect-ratio:unset;height:100%}
+    #vgrid.presenter-mode .vtile:first-child{grid-row:1;border:3px solid var(--maroon)}
+    #vgrid.presenter-mode .strip{display:flex;flex-direction:column;gap:8px;overflow-y:auto;height:100%}
+    #vgrid.presenter-mode .strip .vtile{width:210px;aspect-ratio:16/9;height:auto}
+
+    /* ══ ENCUESTAS ══ */
+    #poll-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
+    #poll-modal.show{display:flex}
+    .poll-card{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:440px;color:#202124}
+    .poll-card h3{font-size:18px;font-weight:700;margin-bottom:16px;color:#202124}
+    .poll-opt{display:flex;align-items:center;gap:10px;padding:12px;border:2px solid #e0e0e0;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.15s}
+    .poll-opt:hover{border-color:#6d1a2e;background:#fce8ee}
+    .poll-opt.voted{border-color:#1e8e3e;background:#e8f5e9}
+    .poll-bar{height:6px;background:#e0e0e0;border-radius:3px;margin-top:6px;overflow:hidden}
+    .poll-bar-fill{height:100%;background:#6d1a2e;border-radius:3px;transition:width .4s}
+    .poll-close{width:100%;margin-top:16px;padding:12px;background:#6d1a2e;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+
+    /* ══ BREAKOUT ROOMS ══ */
+    #breakout-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px}
+    #breakout-modal.show{display:flex}
+    .breakout-card{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:480px;color:#202124}
+    .breakout-room-item{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid #e0e0e0;border-radius:10px;margin-bottom:8px}
+    .btn-join-br{padding:8px 16px;background:#1a73e8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+
+    /* ══ SUBTÍTULOS ══ */
+    #captions-bar{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 24px;border-radius:12px;font-size:16px;max-width:700px;text-align:center;display:none;z-index:500;backdrop-filter:blur(8px)}
+    #captions-bar.show{display:block}
+
+    /* ══ PANEL MANOS LEVANTADAS ══ */
+    #hands-notif{position:fixed;top:80px;left:16px;z-index:8000;display:flex;flex-direction:column;gap:8px;max-width:260px}
+    .hand-notif-item{background:#f9ab00;color:#000;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:slideLeft .3s ease}
+    @keyframes slideLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+
+    @media(max-width:768px){
+      .lbody{flex-direction:column;gap:24px;padding:16px}.lprev{width:100%}.lpanel{width:100%}
+      #header{padding:0 10px}.hname{display:none}
+      #side-panel{position:absolute;right:0;top:64px;bottom:76px;width:100%;max-width:340px}
+      #vgrid.n1 .vtile{width:92%}
+      #req-panel{width:calc(100% - 32px)}
+      #emoji-picker{width:90%}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     MODAL IFD PASSWORD (para invitados sin Google)
+══════════════════════════════════════════════ -->
+<div id="ifd-modal">
+  <div class="ifd-card">
+
+    <!-- Logo IFD -->
+    <div style="text-align:center;margin-bottom:22px">
+      <div class="ifd-logo">
+        <img src="/img/logo-ifd.png" alt="IFD"
+             onerror="this.style.display='none';this.parentNode.querySelector('.fb').style.display='block'"/>
+        <span class="fb" style="display:none">🎓</span>
+      </div>
+      <h2>IFD Meet</h2>
+      <p class="ifd-sub">Instituto de Formación Docente<br>Santa Rosa, Misiones</p>
+    </div>
+
+    <!-- Indicador de pasos -->
+    <div class="ifd-dots">
+      <div class="ifd-dot on" id="d1"></div>
+      <div class="ifd-dot" id="d2"></div>
+    </div>
+
+    <!-- PASO 1: Contraseña -->
+    <div id="step1">
+      <label class="ifd-lbl">Contraseña institucional</label>
+      <div class="ifd-iw">
+        <input type="password" id="ifd-pw" placeholder="Contraseña del IFD"
+               onkeydown="if(event.key==='Enter')ifdCheck()"
+               oninput="document.getElementById('ifd-err').classList.remove('show')"/>
+        <button class="ifd-eye" onclick="ifdEye()" type="button">👁️</button>
+      </div>
+      <p class="ifd-hint">Solo para miembros del IFD Santa Rosa</p>
+      <div class="ifd-err" id="ifd-err"><span>🔒</span><span id="ifd-err-txt">Contraseña incorrecta</span></div>
+      <button class="ifd-btn" id="ifd-check-btn" onclick="ifdCheck()">Verificar contraseña</button>
+      <div class="ifd-div">— o —</div>
+      <a href="/auth/google" class="ifd-gbtn">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+        Iniciar sesión con Google
+      </a>
+    </div>
+
+    <!-- PASO 2: Nombre -->
+    <div id="step2" style="display:none">
+      <div class="ifd-ok">✅ Contraseña correcta</div>
+      <label class="ifd-lbl">Tu nombre completo</label>
+      <div class="ifd-iw">
+        <input type="text" id="ifd-name" placeholder="Ej: María González"
+               onkeydown="if(event.key==='Enter')ifdEnter()"/>
+      </div>
+      <p class="ifd-hint" style="margin-bottom:16px">Se verá en la reunión</p>
+      <button class="ifd-btn" onclick="ifdEnter()">Entrar a la reunión →</button>
+      <button class="ifd-back" onclick="ifdBack()">← Volver</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODAL SALA DE ESPERA
+══════════════════════════════════════════════ -->
+<div id="waiting-modal">
+  <div class="wcard">
+    <div class="wicon">⏳</div>
+    <h3>Esperando admisión</h3>
+    <p id="wmsg">El anfitrión revisará tu solicitud...</p>
+    <div class="wbar"><div class="wbar-fill"></div></div>
+    <button class="wcancel" onclick="leaveMeeting()">Cancelar y salir</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PANEL SOLICITUDES (solo Host)
+══════════════════════════════════════════════ -->
+<div id="req-panel">
+  <div class="rph">
+    <span>🙋 Solicitudes de ingreso</span>
+    <span class="rph-badge" id="req-count">0</span>
+  </div>
+  <div class="rpl" id="req-list"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     EMOJI PICKER
+══════════════════════════════════════════════ -->
+<div id="emoji-picker">
+  <% const emojis = ['👍','❤️','😂','👏','🔥','🎉','😮','💯','🙏','✨','😍','🤔','👋','🤣','😊','💪','🥳','😅','🫶','🤩']; %>
+  <% emojis.forEach(e => { %>
+    <button class="ep-btn" onclick="sendReaction('<%= e %>')" title="<%= e %>"><%= e %></button>
+  <% }) %>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     LOBBY
+══════════════════════════════════════════════ -->
+<div id="lobby">
+  <div class="lhdr">
+    <img src="/img/logo-ifd.png" alt="IFD" class="lhdr-logo"
+         onerror="this.style.display='none';document.getElementById('lhdr-fb').style.display='flex'"/>
+    <div id="lhdr-fb" style="display:none;width:36px;height:36px;border-radius:8px;background:var(--maroon);align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff">IFD</div>
+    <span class="lhdr-brand">IFD Meet</span>
+  </div>
+  <div class="lbody">
+    <div class="lprev">
+      <video id="lobby-video" autoplay playsinline muted></video>
+      <div class="lcamoff" id="lcamoff">
+        <span class="material-icons-round">videocam_off</span>
+        <span class="txt">Cámara desactivada</span>
+      </div>
+      <div class="luser-tag"><%= typeof user !== 'undefined' && user ? user.name : 'Invitado' %></div>
+      <div class="lctrl-wrap">
+        <button class="lctrl" id="lbtn-mic" onclick="lToggleMic()" title="Micrófono">
+          <span class="material-icons-round" id="lic-mic">mic</span>
+        </button>
+        <button class="lctrl" id="lbtn-cam" onclick="lToggleCam()" title="Cámara">
+          <span class="material-icons-round" id="lic-cam">videocam</span>
+        </button>
+      </div>
+    </div>
+    <div class="lpanel">
+      <h2>La reunión está lista</h2>
+      <div class="llink-box">
+        <span class="material-icons-round">link</span>
+        <input class="llink-txt" id="lobby-link" type="text" readonly onclick="this.select()"/>
+        <button class="lcopy-btn" onclick="lCopyLink()" title="Copiar enlace">
+          <span class="material-icons-round">content_copy</span>
+        </button>
+      </div>
+      <div class="linfo">
+        <span class="material-icons-round">lock</span>
+        Las personas que usen este vínculo deberán obtener tu permiso para unirse.
+      </div>
+      <% if (typeof user !== 'undefined' && user) { %>
+      <div class="luser">
+        <img src="<%= user.photo||'' %>" class="luser-ava"
+             onerror="this.style.display='none'" alt="<%= user.name %>"/>
+        <div>
+          <div class="luser-name"><%= user.name %></div>
+          <div class="luser-email"><%= user.email %></div>
+        </div>
+      </div>
+      <% } %>
+      <% if (isCreator) { %>
+      <button class="ljoin-btn ljoin-mirotalk" onclick="abrirMiroTalk()">
+        <span style="font-size:18px">🎥</span>
+        Iniciar videollamada
+      </button>
+      <% } else { %>
+      <button class="ljoin-btn ljoin-mirotalk" onclick="abrirMiroTalk()">
+        <span style="font-size:18px">🎥</span>
+        Unirse a la videollamada
+      </button>
+      <% } %>
+    </div>
+  </div>
+</div>
+<div class="ltoast" id="ltoast">✅ Enlace copiado</div>
+
+<!-- ══════════════════════════════════════════════
+     SALA PRINCIPAL
+══════════════════════════════════════════════ -->
+<div id="app" style="display:none">
+  <header id="header">
+    <div class="hbrand">
+      <img src="/img/logo-ifd.png" alt="IFD" class="hlogo"
+           onerror="this.style.display='none';document.getElementById('hfb').style.display='flex'"/>
+      <div id="hfb" style="display:none;width:36px;height:36px;border-radius:8px;background:var(--maroon);align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0">IFD</div>
+      <span class="hname">IFD Meet</span>
+    </div>
+    <div class="hcenter">
+      <span class="htime" id="room-time">--:--</span>
+      <span class="hsep">•</span>
+      <span class="hcode" id="room-code"></span>
+      <button class="icon-btn" onclick="copyLink()" style="width:28px;height:28px">
+        <span class="material-icons-round" style="font-size:16px">content_copy</span>
+      </button>
+    </div>
+    <div class="hactions">
+      <div id="rec-ind"><div class="rdot"></div><span id="rec-timer">00:00</span></div>
+      <button class="icon-btn" onclick="openPanel('people')">
+        <span class="material-icons-round">people</span>
+        <span class="badge" id="bp">1</span>
+      </button>
+      <button class="icon-btn" onclick="openPanel('chat')">
+        <span class="material-icons-round">chat</span>
+        <span class="badge" id="bc" style="display:none"></span>
+      </button>
+      <button class="icon-btn" id="btn-solicitudes" onclick="toggleSolicitudes()" title="Solicitudes" style="display:none">
+        <span class="material-icons-round">person_add</span>
+        <span class="badge" id="bsol" style="background:#f9ab00">0</span>
+      </button>
+      <button class="icon-btn" onclick="toggleSolicitudes()"><span class="material-icons-round">more_vert</span></button>
+    </div>
+  </header>
+
+  <div id="main">
+    <div id="video-area">
+      <div id="vgrid" class="n1"></div>
+    </div>
+    <aside id="side-panel">
+      <div class="ptabs">
+        <button class="ptab on" id="tab-people" onclick="switchTab('people')">
+          <span class="material-icons-round">people</span> Personas
+        </button>
+        <button class="ptab" id="tab-chat" onclick="switchTab('chat')">
+          <span class="material-icons-round">chat</span> Chat
+        </button>
+      </div>
+      <div class="ppane on" id="pane-people">
+        <div class="plist" id="p-list"></div>
+      </div>
+      <div class="ppane" id="pane-chat">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div id="attach-prev" style="display:none">
+          <div id="attach-prev-inner"></div>
+          <button class="acancel" onclick="cancelAttach()"><span class="material-icons-round">close</span></button>
+        </div>
+        <div class="cin-row">
+          <label class="ctool-btn" title="Adjuntar">
+            <span class="material-icons-round">attach_file</span>
+            <input type="file" id="file-input" multiple
+                   accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.mp3,.mp4"
+                   onchange="handleFileSelect(this.files)" style="display:none"/>
+          </label>
+          <button class="ctool-btn" onclick="triggerImgPick()">
+            <span class="material-icons-round">image</span>
+          </button>
+          <textarea id="chat-input" class="ctextarea" placeholder="Mensaje…" rows="1"
+                    onkeydown="chatKey(event)" oninput="autoResize(this)" onpaste="handlePaste(event)"></textarea>
+          <button class="csend" onclick="sendMsg()">
+            <span class="material-icons-round">send</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="controls">
+    <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()" title="Micrófono">
+      <span class="material-icons-round" id="ic-mic">mic</span>
+    </button>
+    <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()" title="Cámara">
+      <span class="material-icons-round" id="ic-cam">videocam</span>
+    </button>
+    <button class="ctrl-btn" id="btn-screen" onclick="toggleScreen()" title="Pantalla">
+      <span class="material-icons-round">present_to_all</span>
+    </button>
+    <button class="ctrl-btn" id="btn-record" onclick="toggleRec()" title="Grabar clase">
+      <span class="material-icons-round" id="ic-rec">fiber_manual_record</span>
+    </button>
+    <div class="cdiv"></div>
+    <!-- ✅ BOTÓN EMOJI PICKER -->
+    <button class="ctrl-btn" onclick="toggleEmojiPicker()" title="Reacciones" id="btn-emoji">
+      <span class="material-icons-round">emoji_emotions</span>
+    </button>
+    <button class="ctrl-btn" onclick="openPanel('people')" title="Participantes">
+      <span class="material-icons-round">people</span>
+    </button>
+    <button class="ctrl-btn" id="btn-hand" onclick="toggleHand()" title="Levantar mano">
+      <span class="material-icons-round">pan_tool</span>
+    </button>
+    <button class="ctrl-btn" onclick="togglePresenterMode()" title="Vista presentador" id="btn-presenter">
+      <span class="material-icons-round">present_to_all</span>
+    </button>
+    <button class="ctrl-btn" onclick="toggleCaptions()" title="Subtítulos" id="btn-captions">
+      <span class="material-icons-round">closed_caption</span>
+    </button>
+    <button class="ctrl-btn" onclick="document.getElementById('breakout-modal').classList.add('show')" title="Salas de grupos">
+      <span class="material-icons-round">group_work</span>
+    </button>
+    <% if (typeof isCreator !== 'undefined' && isCreator) { %>
+    <button class="ctrl-btn" onclick="document.getElementById('create-poll-modal').style.display='flex'" title="Encuesta">
+      <span class="material-icons-round">poll</span>
+    </button>
+    <% } %>
+    <div class="cdiv"></div>
+    <button class="ctrl-btn ctrl-leave" onclick="leaveMeeting()" title="Salir">
+      <span class="material-icons-round">call_end</span>
+    </button>
+    <div class="cdiv"></div>
+    <button class="ctrl-btn ctrl-mirotalk" onclick="launchMiroTalk(); notifyMiroTalkOpened();" title="Abrir MiroTalk (video HD)" style="background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;font-size:11px;font-weight:700;gap:4px;min-width:auto;padding:0 14px;border-radius:24px">
+      <span style="font-size:15px">🎥</span>
+      MiroTalk
+    </button>
+  </footer>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLB()" style="display:none">
+  <div id="lbx-inner" onclick="event.stopPropagation()">
+    <img id="lbx-img" src="" alt=""/>
+    <a id="lbx-dl" download href="" class="lbx-dl">
+      <span class="material-icons-round">download</span> Descargar
+    </a>
+    <button class="lbx-close" onclick="closeLB()">
+      <span class="material-icons-round">close</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL MIROTALK - CONFIRMACIÓN
+══════════════════════════════════════════ -->
+<div id="mirotalk-modal">
+  <div class="miro-card">
+    <div class="miro-icon">🎥</div>
+    <h2>Videollamada con MiroTalk</h2>
+    <p class="miro-desc">
+      MiroTalk abre una sala de video HD de alta calidad.<br>
+      Tu chat, archivos y participantes siguen en IFD Meet.
+    </p>
+    <div class="miro-features">
+      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Video y audio HD en tiempo real</div>
+      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Compartir pantalla</div>
+      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Sin límite de participantes</div>
+      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Misma sala que tu reunión IFD</div>
+    </div>
+    <div class="miro-room-info">
+      🔗 Sala: <strong id="miro-room-name" style="margin-left:4px"></strong>
+    </div>
+    <button class="miro-btn-main" onclick="launchMiroTalk()">
+      <span style="font-size:20px">🚀</span>
+      Abrir videollamada MiroTalk
+    </button>
+    <button class="miro-btn-cancel" onclick="closeMiroModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL IFRAME MIROTALK (vista integrada)
+══════════════════════════════════════════ -->
+<div id="mirotalk-frame-modal">
+  <div class="mf-header">
+    <div class="mf-title">
+      🎥 MiroTalk &nbsp;·&nbsp; <span id="mf-room-name" style="opacity:.8"></span>
+    </div>
+    <button class="mf-close" onclick="closeMiroFrame()">
+      <span class="material-icons-round" style="font-size:16px">close</span>
+      Cerrar video
+    </button>
+  </div>
+  <iframe id="mirotalk-iframe" allow="camera;microphone;display-capture;fullscreen;clipboard-read;clipboard-write" allowfullscreen></iframe>
+</div>
+
+<!-- ══════════════════════════════════════════
+     🎥 MIROTALK INTEGRADO — iframe full screen
+══════════════════════════════════════════ -->
+<div id="miro-overlay">
+  <div id="miro-topbar">
+    <div id="miro-topbar-left">
+      <span>🎥</span>
+      <span>Videollamada IFD Meet</span>
+    </div>
+    <div id="miro-topbar-right">
+      <button class="miro-tb-btn miro-tb-volver" onclick="volverAlSistema()">
+        ← Volver al sistema
+      </button>
+      <button class="miro-tb-btn miro-tb-salir" onclick="cerrarMiroTalk()">
+        ✖ Finalizar llamada
+      </button>
+    </div>
+  </div>
+  <iframe
+    id="miro-iframe"
+    allow="camera;microphone;display-capture;fullscreen;clipboard-read;clipboard-write;autoplay"
+    allowfullscreen
+    src=""
+  ></iframe>
+</div>
+
+<div id="toast"></div>
+
+<!-- NOTIFICACION ADMITIR - grande y visible -->
+<div id="admit-notif" style="
+  display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);
+  background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.35);
+  padding:16px 20px;z-index:99999;min-width:320px;max-width:400px;
+  border-left:5px solid #6d1a2e;animation:slideDown .3s ease;
+">
+  <style>@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="width:44px;height:44px;border-radius:50%;background:#6d1a2e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🙋</div>
+    <div style="flex:1">
+      <div style="font-weight:700;color:#202124;font-size:15px" id="admit-name">Alguien</div>
+      <div style="font-size:12px;color:#666">quiere unirse a la reunión</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="admitirDesdeNotif()" style="padding:8px 16px;background:#1e8e3e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">✓ Admitir</button>
+      <button onclick="rechazarDesdeNotif()" style="padding:8px 12px;background:#f5f5f5;color:#c62828;border:1px solid #ffcdd2;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">✗</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ENCUESTA ══ -->
+<div id="poll-modal">
+  <div class="poll-card">
+    <h3 id="poll-question">Encuesta</h3>
+    <div id="poll-options"></div>
+    <button class="poll-close" onclick="closePoll()">Cerrar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL BREAKOUT ROOMS ══ -->
+<div id="breakout-modal">
+  <div class="breakout-card">
+    <h3 style="margin-bottom:16px;color:#202124">🚪 Salas de grupos</h3>
+    <div id="breakout-list"></div>
+    <% if (typeof isCreator !== 'undefined' && isCreator) { %>
+    <div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px">
+      <input id="br-name" placeholder="Nombre de la sala" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px"/>
+      <button onclick="createBreakout()" style="width:100%;padding:12px;background:#6d1a2e;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">+ Crear sala de grupo</button>
+    </div>
+    <% } %>
+    <button onclick="document.getElementById('breakout-modal').classList.remove('show')" style="width:100%;margin-top:10px;padding:10px;background:#f5f5f5;border:none;border-radius:10px;cursor:pointer;color:#666">Cerrar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL CREAR ENCUESTA (solo host) ══ -->
+<div id="create-poll-modal" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:20px;padding:28px;width:100%;max-width:440px;color:#202124">
+    <h3 style="margin-bottom:16px">📊 Nueva encuesta</h3>
+    <input id="poll-q" placeholder="Pregunta..." style="width:100%;padding:12px;border:1.5px solid #ddd;border-radius:10px;font-size:15px;margin-bottom:12px"/>
+    <div id="poll-opts-inputs">
+      <input class="poll-opt-input" placeholder="Opción 1" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px"/>
+      <input class="poll-opt-input" placeholder="Opción 2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px"/>
+    </div>
+    <button onclick="addPollOption()" style="width:100%;padding:10px;border:1px dashed #ccc;border-radius:8px;background:none;cursor:pointer;color:#666;margin-bottom:12px">+ Agregar opción</button>
+    <button onclick="submitPoll()" style="width:100%;padding:13px;background:#6d1a2e;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px">Lanzar encuesta</button>
+    <button onclick="document.getElementById('create-poll-modal').style.display='none'" style="width:100%;padding:10px;background:#f5f5f5;border:none;border-radius:10px;cursor:pointer;color:#666">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ SUBTÍTULOS ══ -->
+<div id="captions-bar"></div>
+
+<!-- ══ NOTIFICACIONES MANOS ══ -->
+<div id="hands-notif"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ═══════════════════════════════════════════
+//  VARIABLES DEL SERVIDOR
+// ═══════════════════════════════════════════
+const ROOM_ID    = "<%- roomId %>";
+const APP_URL_JS = "<%= typeof APP_URL !== 'undefined' ? APP_URL : '' %>";
+const SRV_USER   = <%- JSON.stringify(typeof user !== 'undefined' && user ? user : null) %>;
+const IFD_OK     = <%= typeof ifdVerified !== 'undefined' ? ifdVerified : false %>;
+const IS_CREATOR = <%= typeof isCreator !== 'undefined' ? isCreator : false %>; // creó la sala con /nueva
+
+let myName  = SRV_USER ? SRV_USER.name  : 'Invitado';
+let myEmail = SRV_USER ? SRV_USER.email : '';
+let myPhoto = SRV_USER ? (SRV_USER.photo || '') : '';
+let amIHost = false; // el SERVIDOR confirma esto
+
+// ═══════════════════════════════════════════
+//  SOCKET — se crea una sola vez al cargar
+// ═══════════════════════════════════════════
+const socket = io();
+
+// ═══════════════════════════════════════════
+//  MODAL IFD PASSWORD
+// ═══════════════════════════════════════════
+let ifdVerified = IFD_OK;
+
+window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('lobby-link').value = (APP_URL_JS || location.origin) + '/sala/' + ROOM_ID;
+
+  if (!ifdVerified) {
+    try {
+      const r = await fetch('/api/ifd-status');
+      const d = await r.json();
+      if (d.ifdVerified) {
+        ifdVerified = true;
+        if (d.user) {
+          myName  = d.user.name  || myName;
+          myEmail = d.user.email || myEmail;
+          myPhoto = d.user.photo || myPhoto;
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (!ifdVerified) {
+    document.getElementById('ifd-modal').classList.add('show');
+    setTimeout(() => document.getElementById('ifd-pw')?.focus(), 200);
+  }
+});
+
+function ifdEye() {
+  const i = document.getElementById('ifd-pw');
+  const b = document.querySelector('.ifd-eye');
+  i.type = i.type === 'password' ? 'text' : 'password';
+  b.textContent = i.type === 'password' ? '👁️' : '🙈';
+}
+
+async function ifdCheck() {
+  const pw  = document.getElementById('ifd-pw').value.trim();
+  const btn = document.getElementById('ifd-check-btn');
+  const err = document.getElementById('ifd-err');
+  const etx = document.getElementById('ifd-err-txt');
+  if (!pw) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ifd-spin"></span>Verificando...';
+  err.classList.remove('show');
+  try {
+    const res  = await fetch('/api/verificar-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password: pw }) });
+    const data = await res.json();
+    if (data.ok) {
+      ifdVerified = true;
+      if (SRV_USER) {
+        document.getElementById('ifd-modal').classList.remove('show');
+      } else {
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+        document.getElementById('d1').classList.remove('on');
+        document.getElementById('d2').classList.add('on');
+        setTimeout(() => document.getElementById('ifd-name')?.focus(), 100);
+      }
+    } else {
+      etx.textContent = data.error || 'Contraseña incorrecta. Intentá de nuevo.';
+      err.classList.add('show');
+      document.getElementById('ifd-pw').value = '';
+      document.getElementById('ifd-pw').focus();
+    }
+  } catch(e) {
+    etx.textContent = 'Error de conexión. Intentá de nuevo.';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Verificar contraseña';
+  }
+}
+
+function ifdEnter() {
+  const nombre = document.getElementById('ifd-name').value.trim();
+  if (!nombre || nombre.length < 2) {
+    document.getElementById('ifd-name').style.borderColor = '#ea4335';
+    document.getElementById('ifd-name').focus(); return;
+  }
+  myName = nombre;
+  document.getElementById('ifd-modal').classList.remove('show');
+}
+
+function ifdBack() {
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+  document.getElementById('d1').classList.add('on');
+  document.getElementById('d2').classList.remove('on');
+}
+
+// ═══════════════════════════════════════════
+//  LOBBY
+// ═══════════════════════════════════════════
+let lobbyStream = null, lMicOn = true, lCamOn = true;
+
+(async () => {
+  try {
+    lobbyStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+    document.getElementById('lobby-video').srcObject = lobbyStream;
+    document.getElementById('lcamoff').style.display = 'none';
+  } catch(e) { document.getElementById('lcamoff').style.display = 'flex'; }
+})();
+
+function lToggleMic() {
+  lMicOn = !lMicOn;
+  if (lobbyStream) lobbyStream.getAudioTracks().forEach(t => t.enabled = lMicOn);
+  document.getElementById('lbtn-mic').classList.toggle('off', !lMicOn);
+  document.getElementById('lic-mic').textContent = lMicOn ? 'mic' : 'mic_off';
+}
+function lToggleCam() {
+  lCamOn = !lCamOn;
+  if (lobbyStream) lobbyStream.getVideoTracks().forEach(t => t.enabled = lCamOn);
+  document.getElementById('lbtn-cam').classList.toggle('off', !lCamOn);
+  document.getElementById('lic-cam').textContent = lCamOn ? 'videocam' : 'videocam_off';
+  document.getElementById('lcamoff').style.display = lCamOn ? 'none' : 'flex';
+}
+function lCopyLink() {
+  const link = (APP_URL_JS || location.origin) + '/sala/' + ROOM_ID;
+  navigator.clipboard.writeText(link).then(() => {
+    const t = document.getElementById('ltoast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  });
+}
+
+function enterRoom() {
+  if (lobbyStream) { lobbyStream.getTracks().forEach(t => t.stop()); lobbyStream = null; }
+  document.getElementById('lobby').style.display = 'none';
+  if (IS_CREATOR) {
+    // HOST: entra directo a la sala
+    document.getElementById('app').style.display = 'flex';
+    initRoom();
+  } else {
+    // INVITADO: solo muestra pantalla de espera, NO inicia la sala todavía
+    document.getElementById('waiting-modal').classList.add('show');
+    // Registrarse en el servidor para esperar admisión
+    initWaiting();
+  }
+}
+
+// Solo para invitados: conectar socket y esperar admisión sin iniciar video aún
+async function initWaiting() {
+  const tempId = 'tmp-' + Math.random().toString(36).slice(2, 10);
+  console.log('⏳ Esperando admisión, tempId:', tempId);
+  socket.emit('join-room', ROOM_ID, tempId, myName, myEmail, myPhoto, false);
+}
+
+// ═══════════════════════════════════════════
+//  SALA
+// ═══════════════════════════════════════════
+let myPeer = null, myStream = null, screenStream = null;
+const peers = {}, parts = {};
+const st = { mic:true, cam:true, screen:false };
+
+async function initRoom() {
+  document.getElementById('room-code').textContent = ROOM_ID.slice(0,8) + '...';
+  startClock();
+  await initMedia();
+  if (IS_CREATOR) {
+    initPeer(); // host: initPeer emite join-room
+  } else {
+    initPeerAdmitted(); // invitado admitido: solo conecta peer sin re-emitir join-room
+  }
+  renderParts();
+}
+
+async function initMedia() {
+  try {
+    myStream = await navigator.mediaDevices.getUserMedia({
+      video:{ width:{ideal:1280}, height:{ideal:720} },
+      audio:{ echoCancellation:true, noiseSuppression:true }
+    });
+    st.mic = lMicOn; st.cam = lCamOn;
+    myStream.getAudioTracks().forEach(t => t.enabled = st.mic);
+    myStream.getVideoTracks().forEach(t => t.enabled = st.cam);
+    if (!st.mic) { document.getElementById('btn-mic').classList.add('muted'); document.getElementById('ic-mic').textContent='mic_off'; }
+    if (!st.cam) { document.getElementById('btn-cam').classList.add('muted'); document.getElementById('ic-cam').textContent='videocam_off'; }
+  } catch(e) { console.warn('Sin cam/mic:', e); }
+  if (myStream) addTile(myStream, 'yo', 'Tú (' + myName + ')', true);
+}
+
+function initPeer() {
+  const peerPort = location.port ? parseInt(location.port) : (location.protocol === 'https:' ? 443 : 80);
+
+  myPeer = new Peer(undefined, {
+    path:'/peerjs', host: location.hostname, port: peerPort,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+      ]
+    }
+  });
+
+  // ✅ CLAVE: emitir join-room por socket INMEDIATAMENTE con id temporal.
+  // No esperamos a PeerJS para registrarnos en el servidor.
+  const tempId = 'tmp-' + Math.random().toString(36).slice(2, 10);
+  console.log('📡 join-room enviado, tempId:', tempId, 'IS_CREATOR:', IS_CREATOR);
+  socket.emit('join-room', ROOM_ID, tempId, myName, myEmail, myPhoto, IS_CREATOR);
+
+  myPeer.on('open', id => {
+    console.log('✅ PeerJS listo, ID:', id);
+    // Actualizar el servidor con el peerId real para llamadas de video
+    socket.emit('peer-ready', { roomId: ROOM_ID, peerId: id, tempId });
+  });
+
+  myPeer.on('call', call => {
+    call.answer(myStream || undefined);
+    call.on('stream', s => {
+      const p = parts[call.peer];
+      addTile(s, call.peer, p?.name || 'Participante', false);
+    });
+    call.on('error', e => console.warn('Call error:', e));
+    peers[call.peer] = call;
+  });
+
+  myPeer.on('error', e => {
+    console.warn('PeerJS error:', e.type);
+    if (['disconnected','network','server-error'].includes(e.type)) {
+      setTimeout(() => { try { if (myPeer.disconnected) myPeer.reconnect(); } catch(_) {} }, 2000);
+    }
+  });
+
+  myPeer.on('disconnected', () => {
+    setTimeout(() => { try { myPeer.reconnect(); } catch(_) {} }, 2000);
+  });
+}
+
+// Invitado admitido: conectar PeerJS sin emitir join-room (ya está en la sala)
+function initPeerAdmitted() {
+  const peerPort = location.port ? parseInt(location.port) : (location.protocol === 'https:' ? 443 : 80);
+  myPeer = new Peer(undefined, {
+    path:'/peerjs', host: location.hostname, port: peerPort,
+    config: { iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+    ]}
+  });
+  myPeer.on('open', id => {
+    console.log('✅ PeerJS admitido, ID:', id);
+    // Avisar al servidor el peerId real para que el host pueda llamar
+    socket.emit('peer-ready', { roomId: ROOM_ID, peerId: id, tempId: 'admitted' });
+    // Llamar a todos los que ya están en la sala
+    Object.keys(parts).forEach(peerId => {
+      if (!peers[peerId]) {
+        setTimeout(() => {
+          try {
+            const call = myPeer.call(peerId, myStream);
+            if (call) {
+              call.on('stream', s => addTile(s, peerId, parts[peerId]?.name || 'Participante', false));
+              peers[peerId] = call;
+            }
+          } catch(e) {}
+        }, 600);
+      }
+    });
+  });
+  myPeer.on('call', call => {
+    call.answer(myStream || undefined);
+    call.on('stream', s => {
+      const p = parts[call.peer];
+      addTile(s, call.peer, p?.name || 'Participante', false);
+    });
+    peers[call.peer] = call;
+  });
+  myPeer.on('error', e => console.warn('PeerJS error:', e.type));
+}
+
+// ═══════════════════════════════════════════
+//  SONIDOS
+// ═══════════════════════════════════════════
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if (type === 'join') {
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } else if (type === 'leave') {
+      osc.frequency.setValueAtTime(784, ctx.currentTime);
+      osc.frequency.setValueAtTime(523, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(); osc.stop(ctx.currentTime + 0.4);
+    }
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+//  DETECTOR DE VOZ (quién habla)
+// ═══════════════════════════════════════════
+function startSpeakingDetector(stream, tileId) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let speaking = false;
+    setInterval(() => {
+      analyser.getByteFrequencyData(data);
+      const vol = data.reduce((a, b) => a + b, 0) / data.length;
+      const tile = document.getElementById('tile-' + tileId);
+      if (!tile) return;
+      const isSpeaking = vol > 15;
+      if (isSpeaking !== speaking) {
+        speaking = isSpeaking;
+        tile.classList.toggle('speaking', isSpeaking);
+        // Mostrar nombre del que habla
+        const lbl = tile.querySelector('.vlbl');
+        if (lbl) lbl.style.background = isSpeaking ? 'rgba(30,142,62,0.85)' : 'rgba(0,0,0,0.65)';
+      }
+    }, 100);
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+//  SOCKET EVENTS
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════
+//  SISTEMA DE ADMISIÓN
+// ═══════════════════════════════
+let notifQueue = []; // cola de notificaciones pendientes
+let notifActual = null; // solicitud mostrándose ahora
+
+socket.on('joined-room', (data) => {
+  if (data && data.asHost) {
+    amIHost = true;
+    document.getElementById('waiting-modal').classList.remove('show');
+    // Mostrar botón de solicitudes
+    document.getElementById('btn-solicitudes').style.display = 'flex';
+    // Procesar solicitudes que llegaron antes de joined-room
+    const pending = [...pendingRequests];
+    pendingRequests.length = 0;
+    pending.forEach(u => mostrarSolicitud(u.socketId, u.userName, u.userEmail, u.userPhoto));
+    // Procesar la lista que viene directamente del servidor
+    if (data.waitingList && data.waitingList.length > 0) {
+      data.waitingList.forEach(u => mostrarSolicitud(u.socketId, u.userName, u.userEmail, u.userPhoto));
+    }
+    // Pedir lista actualizada por si hay más
+    setTimeout(() => socket.emit('get-waiting-list', ROOM_ID), 500);
+  }
+});
+
+socket.on('waiting-approval', ({ message, position }) => {
+  document.getElementById('waiting-modal').classList.add('show');
+  document.getElementById('wmsg').textContent =
+    (message || 'Esperando que el anfitrión te admita...') +
+    (position > 1 ? ` (Posición: ${position})` : '');
+});
+
+// ✅ El host me admitió — AHORA iniciamos la sala
+socket.on('admitted', () => {
+  document.getElementById('waiting-modal').classList.remove('show');
+  document.getElementById('app').style.display = 'flex';
+  playSound('join');
+  toast('✅ ¡Fuiste admitido a la reunión!', '#1e8e3e');
+  initRoom(); // recién ahora inicia video
+});
+
+socket.on('rejected', (msg) => {
+  document.getElementById('waiting-modal').classList.remove('show');
+  toast('❌ ' + (msg || 'No fuiste admitido.'), '#ea4335');
+  setTimeout(() => location.href = '/', 3000);
+});
+
+socket.on('kicked', (msg) => {
+  toast('⛔ ' + (msg || 'Fuiste expulsado.'), '#ea4335');
+  setTimeout(() => location.href = '/', 3000);
+});
+
+socket.on('force-muted', () => {
+  if (!st.mic) return;
+  st.mic = false;
+  if (myStream) myStream.getAudioTracks().forEach(t => t.enabled = false);
+  document.getElementById('btn-mic').classList.add('muted');
+  document.getElementById('ic-mic').textContent = 'mic_off';
+  toast('🔇 El anfitrión te silenció', '#f9ab00');
+});
+
+// Cola de solicitudes que llegan antes de saber si somos host
+const pendingRequests = [];
+
+socket.on('user-waiting', ({ socketId, userName, userEmail, userPhoto }) => {
+  console.log('📨 user-waiting recibido:', userName, '| amIHost:', amIHost, '| IS_CREATOR:', IS_CREATOR);
+  // Guardar siempre para no perder ninguna solicitud
+  if (!pendingRequests.find(u => u.socketId === socketId)) {
+    pendingRequests.push({ socketId, userName, userEmail, userPhoto });
+  }
+  // Mostrar si soy el creador O si ya confirmé ser host
+  // IS_CREATOR viene del servidor y es 100% confiable
+  if (IS_CREATOR || amIHost) {
+    mostrarSolicitud(socketId, userName, userEmail, userPhoto);
+  }
+});
+
+// ✅ HOST: lista completa al reconectar
+socket.on('waiting-list', (list) => {
+  if (!amIHost) return;
+  document.getElementById('req-list').innerHTML = '';
+  list.forEach(u => addRequest(u.socketId, u.userName, u.userEmail, u.userPhoto));
+  updReqCount();
+});
+
+// Nuevo usuario de video conectado
+socket.on('user-connected', (peerId, nombre, email, foto) => {
+  parts[peerId] = { name: nombre, email: email||'', photo: foto||'', mic:true, cam:true };
+  if (myStream) {
+    const tryCall = (attempt) => {
+      if (attempt > 3) return;
+      setTimeout(() => {
+        try {
+          const call = myPeer.call(peerId, myStream);
+          if (call) {
+            call.on('stream', s => addTile(s, peerId, nombre, false));
+            call.on('error', () => tryCall(attempt + 1));
+            peers[peerId] = call;
+          } else { tryCall(attempt + 1); }
+        } catch(e) { tryCall(attempt + 1); }
+      }, 800 * attempt);
+    };
+    tryCall(1);
+  }
+  sysMsg(nombre + ' se unió'); renderParts(); updCount(); playSound('join');
+});
+
+socket.on('peer-id-updated', ({ tempId, peerId, userName, userEmail, userPhoto }) => {
+  // Registrar participante con peerId real
+  if (!parts[peerId]) {
+    parts[peerId] = { name: userName || parts[tempId]?.name || 'Participante', email: userEmail, photo: userPhoto, mic: true, cam: true };
+  }
+  // Llamar para video
+  if (myStream && myPeer && !peers[peerId]) {
+    setTimeout(() => {
+      try {
+        const call = myPeer.call(peerId, myStream);
+        if (call) {
+          const nombre = parts[peerId]?.name || 'Participante';
+          call.on('stream', s => addTile(s, peerId, nombre, false));
+          call.on('error', e => console.warn('call error:', e));
+          peers[peerId] = call;
+        }
+      } catch(e) { console.warn('peer-id-updated call error:', e); }
+    }, 600);
+  }
+  renderParts(); updCount();
+});
+
+socket.on('user-disconnected', (peerId, nombre) => {
+  if (peers[peerId]) { peers[peerId].close(); delete peers[peerId]; }
+  document.getElementById('tile-' + peerId)?.remove();
+  const n = nombre || parts[peerId]?.name || 'Alguien';
+  delete parts[peerId];
+  sysMsg(n + ' salió'); renderParts(); updCount(); fixGrid(); playSound('leave');
+});
+
+socket.on('host-left', () => toast('⚠️ El anfitrión salió de la reunión', '#f9ab00', 8000));
+socket.on('user-media-state', (peerId, state) => {
+  if (parts[peerId]) { Object.assign(parts[peerId], state); renderParts(); }
+});
+socket.on('user-screen-share', (peerId, active) => {
+  if (parts[peerId]) { parts[peerId].screen = active; renderParts(); }
+});
+socket.on('user-reaction', (nombre, emoji) => toast(emoji + ' ' + nombre, '#323232', 2500));
+socket.on('user-recording-started', ({ userName }) => toast('🎥 ' + userName + ' está grabando', '#f9ab00'));
+socket.on('user-recording-stopped', ({ userName }) => toast('⏹️ ' + userName + ' detuvo la grabación', '#9aa0a6'));
+socket.on('receive-message', d => { if (d.nombre !== myName) { renderMsg({...d, own:false}); bumpUnread(); } });
+socket.on('receive-file',    d => { if (d.nombre !== myName) { renderMsg({...d, own:false}); bumpUnread(); } });
+socket.on('server-status', (s) => { if (s.maintenance) toast('⚠️ ' + (s.message || 'Mantenimiento programado'), '#f9ab00', 0); });
+
+// ═══════════════════════════════════════════
+//  HOST: PANEL SOLICITUDES
+// ═══════════════════════════════════════════
+// ═══ NOTIFICACIÓN DE SOLICITUD ═══
+function mostrarSolicitud(sid, nombre, email, foto) {
+  // Agregar al panel lateral también
+  addRequest(sid, nombre, email, foto);
+  // Mostrar botón con badge
+  const btnSol = document.getElementById('btn-solicitudes');
+  if (btnSol) btnSol.style.display = 'flex';
+  updBadgeSol();
+  // Mostrar notificación flotante grande
+  notifQueue.push({ sid, nombre, email, foto });
+  if (!notifActual) mostrarSiguienteNotif();
+}
+
+function mostrarSiguienteNotif() {
+  if (!notifQueue.length) { notifActual = null; return; }
+  notifActual = notifQueue.shift();
+  const n = document.getElementById('admit-notif');
+  document.getElementById('admit-name').textContent = notifActual.nombre || 'Invitado';
+  n.style.display = 'block';
+  // Auto-ocultar después de 30 segundos
+  clearTimeout(window._notifTimer);
+  window._notifTimer = setTimeout(() => { if(notifActual) mostrarSiguienteNotif(); }, 30000);
+}
+
+function admitirDesdeNotif() {
+  if (!notifActual) return;
+  admitUser(notifActual.sid);
+  document.getElementById('admit-notif').style.display = 'none';
+  notifActual = null;
+  setTimeout(mostrarSiguienteNotif, 300);
+}
+
+function rechazarDesdeNotif() {
+  if (!notifActual) return;
+  rejectUser(notifActual.sid);
+  document.getElementById('admit-notif').style.display = 'none';
+  notifActual = null;
+  setTimeout(mostrarSiguienteNotif, 300);
+}
+
+function toggleSolicitudes() {
+  openPanel('people');
+  switchTab('people');
+}
+
+function updBadgeSol() {
+  const n = document.getElementById('req-list')?.children.length || 0;
+  const b = document.getElementById('bsol');
+  if (b) b.textContent = n;
+}
+
+function addRequest(sid, nombre, email, foto) {
+  if (document.getElementById('req-' + sid)) return;
+  const panel = document.getElementById('req-panel');
+  const list  = document.getElementById('req-list');
+  panel.classList.add('show');
+  const ini  = (nombre || '?')[0].toUpperCase();
+  const item = document.createElement('div');
+  item.className = 'rpi'; item.id = 'req-' + sid;
+  item.innerHTML = `
+    <div class="rpi-ava">
+      ${foto ? `<img src="${foto}" onerror="this.style.display='none';this.parentNode.textContent='${ini}'"/>` : ini}
+    </div>
+    <div class="rpi-info">
+      <div class="rpi-name">${escH(nombre || 'Invitado')}</div>
+      <div class="rpi-email">${escH(email || '')}</div>
+    </div>
+    <div class="rpi-btns">
+      <button class="btn-admit" onclick="admitUser('${sid}')">✓ Admitir</button>
+      <button class="btn-reject" onclick="rejectUser('${sid}')">✗</button>
+    </div>`;
+  list.appendChild(item);
+  updReqCount();
+}
+
+function admitUser(sid) {
+  socket.emit('admit-user', sid, ROOM_ID);
+  document.getElementById('req-' + sid)?.remove();
+  updReqCount();
+}
+function rejectUser(sid) {
+  socket.emit('reject-user', sid, ROOM_ID);
+  document.getElementById('req-' + sid)?.remove();
+  updReqCount();
+}
+function updReqCount() {
+  const n = document.getElementById('req-list').children.length;
+  const panel = document.getElementById('req-panel');
+  if (n === 0) panel.classList.remove('show');
+  const badge = document.querySelector('.rph-badge');
+  if (badge) badge.textContent = n;
+}
+
+function addTile(stream, id, nombre, self) {
+  let tile = document.getElementById('tile-'+id);
+  if (tile) { tile.querySelector('video').srcObject = stream; return; }
+  tile = document.createElement('div');
+  tile.className = 'vtile' + (self ? ' self' : '');
+  tile.id = 'tile-' + id;
+  const ini = nombre.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  tile.innerHTML = `
+    <div class="vph" id="ph-${id}"><div class="vava">${ini}</div></div>
+    <video autoplay playsinline ${self?'muted':''}></video>
+    <div class="vlbl"><span class="material-icons-round">mic</span>${escH(nombre)}</div>`;
+  const v = tile.querySelector('video');
+  v.srcObject = stream;
+  v.onloadedmetadata = () => { const p=document.getElementById('ph-'+id); if(p) p.style.display='none'; };
+  document.getElementById('vgrid').appendChild(tile);
+  fixGrid();
+  // Iniciar detector de voz
+  startSpeakingDetector(stream, id);
+}
+function fixGrid() {
+  const g = document.getElementById('vgrid');
+  const n = g.children.length;
+  // Layout tipo Google Meet
+  g.className = '';
+  if (n === 1) {
+    g.style.gridTemplateColumns = '1fr';
+    g.style.gridTemplateRows = '1fr';
+  } else if (n === 2) {
+    g.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    g.style.gridTemplateRows = '1fr';
+  } else if (n <= 4) {
+    g.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    g.style.gridTemplateRows = 'repeat(2, 1fr)';
+  } else if (n <= 6) {
+    g.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    g.style.gridTemplateRows = 'repeat(2, 1fr)';
+  } else if (n <= 9) {
+    g.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    g.style.gridTemplateRows = 'repeat(3, 1fr)';
+  } else if (n <= 16) {
+    g.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    g.style.gridTemplateRows = 'repeat(4, 1fr)';
+  } else if (n <= 25) {
+    g.style.gridTemplateColumns = 'repeat(5, 1fr)';
+    g.style.gridTemplateRows = 'repeat(5, 1fr)';
+  } else {
+    // Para muchos usuarios: scroll
+    g.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+    g.style.gridTemplateRows = 'auto';
+    g.style.overflowY = 'auto';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CONTROLES MEDIA
+// ══════════════════════════════════════════════
+function toggleMic() {
+  if (!myStream) return;
+  st.mic = !st.mic;
+  myStream.getAudioTracks().forEach(t => t.enabled = st.mic);
+  document.getElementById('btn-mic').classList.toggle('muted', !st.mic);
+  document.getElementById('ic-mic').textContent = st.mic ? 'mic' : 'mic_off';
+}
+function toggleCam() {
+  if (!myStream) return;
+  st.cam = !st.cam;
+  myStream.getVideoTracks().forEach(t => t.enabled = st.cam);
+  document.getElementById('btn-cam').classList.toggle('muted', !st.cam);
+  document.getElementById('ic-cam').textContent = st.cam ? 'videocam' : 'videocam_off';
+  const p = document.getElementById('ph-yo'); if (p) p.style.display = st.cam ? 'none' : 'flex';
+}
+async function toggleScreen() {
+  if (st.screen) {
+    screenStream?.getTracks().forEach(t => t.stop()); screenStream = null; st.screen = false;
+    document.getElementById('btn-screen').classList.remove('screen-on');
+    if (myStream) { const t=document.getElementById('tile-yo'); if(t) t.querySelector('video').srcObject=myStream; }
+    return;
+  }
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video:true });
+    st.screen = true; document.getElementById('btn-screen').classList.add('screen-on');
+    const track = screenStream.getVideoTracks()[0];
+    Object.values(peers).forEach(call => {
+      const s = call.peerConnection.getSenders().find(s => s.track?.kind==='video');
+      if (s) s.replaceTrack(track);
+    });
+    const mv = document.querySelector('#tile-yo video'); if (mv) mv.srcObject = screenStream;
+    track.onended = toggleScreen;
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+//  ✅ EMOJI PICKER
+// ══════════════════════════════════════════════
+let emojiPickerOpen = false;
+
+function toggleEmojiPicker() {
+  emojiPickerOpen = !emojiPickerOpen;
+  const picker = document.getElementById('emoji-picker');
+  picker.classList.toggle('show', emojiPickerOpen);
+  document.getElementById('btn-emoji').classList.toggle('muted', emojiPickerOpen);
+}
+
+function sendReaction(emoji) {
+  // Animación flotante
+  floatEmoji(emoji);
+  // Notificar a todos
+  socket.emit('reaction', { roomId: ROOM_ID, userName: myName, emoji });
+  // Cerrar picker
+  emojiPickerOpen = false;
+  document.getElementById('emoji-picker').classList.remove('show');
+  document.getElementById('btn-emoji').classList.remove('muted');
+}
+
+function floatEmoji(emoji) {
+  const el = document.createElement('div');
+  el.textContent = emoji;
+  el.style.cssText = `position:fixed;bottom:90px;left:${15+Math.random()*70}%;font-size:34px;
+    z-index:999;pointer-events:none;transition:all 2.2s ease;user-select:none`;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.transform='translateY(-130px)'; el.style.opacity='0'; }, 50);
+  setTimeout(() => el.remove(), 2300);
+}
+
+// Cerrar picker al click fuera
+document.addEventListener('click', (e) => {
+  if (emojiPickerOpen && !e.target.closest('#emoji-picker') && !e.target.closest('#btn-emoji')) {
+    emojiPickerOpen = false;
+    document.getElementById('emoji-picker').classList.remove('show');
+    document.getElementById('btn-emoji').classList.remove('muted');
+  }
+});
+
+// ══════════════════════════════════════════════
+//  ✅ GRABACIÓN
+// ══════════════════════════════════════════════
+let mediaRec = null, recChunks = [], isRec = false, recStart = null, recInt = null;
+
+async function toggleRec() { isRec ? stopRec() : await startRec(); }
+
+async function startRec() {
+  try {
+    let display;
+    try { display = await navigator.mediaDevices.getDisplayMedia({ video:{ width:{ideal:1920}, height:{ideal:1080} }, audio:true }); } catch(e) {}
+
+    const ctx = new AudioContext(), dest = ctx.createMediaStreamDestination();
+    if (display?.getAudioTracks().length) ctx.createMediaStreamSource(display).connect(dest);
+    if (myStream?.getAudioTracks().length) ctx.createMediaStreamSource(myStream).connect(dest);
+
+    const tracks = [];
+    if (display?.getVideoTracks().length) tracks.push(...display.getVideoTracks());
+    tracks.push(...dest.stream.getAudioTracks());
+    const combined = new MediaStream(tracks);
+
+    const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';
+    recChunks = [];
+    mediaRec = new MediaRecorder(combined, { mimeType:mime, videoBitsPerSecond:2500000 });
+    mediaRec.ondataavailable = e => { if (e.data?.size>0) recChunks.push(e.data); };
+    mediaRec.onstop = () => { saveRec(); combined.getTracks().forEach(t=>t.stop()); if(display) display.getTracks().forEach(t=>t.stop()); };
+    mediaRec.start(1000);
+
+    isRec = true; recStart = Date.now();
+    document.getElementById('btn-record').classList.add('recording');
+    document.getElementById('ic-rec').textContent = 'stop';
+    document.getElementById('rec-ind').classList.add('show');
+    recInt = setInterval(() => {
+      const s = Math.round((Date.now()-recStart)/1000);
+      document.getElementById('rec-timer').textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    }, 1000);
+    socket.emit('recording-started', { roomId:ROOM_ID, userName:myName });
+    toast('🎥 Grabación iniciada', '#1e8e3e');
+    if (display) display.getVideoTracks()[0].addEventListener('ended', () => { if(isRec) stopRec(); });
+  } catch(e) { toast('❌ No se pudo iniciar la grabación', '#ea4335'); }
+}
+
+function stopRec() {
+  if (mediaRec && mediaRec.state !== 'inactive') mediaRec.stop();
+  isRec = false; clearInterval(recInt);
+  document.getElementById('btn-record').classList.remove('recording');
+  document.getElementById('ic-rec').textContent = 'fiber_manual_record';
+  document.getElementById('rec-ind').classList.remove('show');
+  document.getElementById('rec-timer').textContent = '00:00';
+  socket.emit('recording-stopped', { roomId:ROOM_ID, userName:myName });
+}
+
+async function saveRec() {
+  if (!recChunks.length) return;
+  const blob = new Blob(recChunks, { type:'video/webm' });
+  const now = new Date();
+  const fn = `IFD-Clase-${now.toLocaleDateString('es-PY').replace(/\//g,'-')}-${now.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}).replace(':','h')}.webm`;
+  toast(`💾 Guardando grabación (${(blob.size/1024/1024).toFixed(1)}MB)...`, '#1565c0');
+  try {
+    const fd = new FormData(); fd.append('recording', blob, fn);
+    const res = await fetch('/upload-recording', { method:'POST', body:fd });
+    const d = await res.json();
+    if (d.ok) { toast(`✅ Grabación guardada: ${d.filename}`, '#1e8e3e', 8000); return; }
+  } catch(e) {}
+  // Fallback local
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=fn; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast(`✅ Descargada: ${fn}`, '#1e8e3e', 8000);
+}
+
+// ══════════════════════════════════════════════
+//  PANEL LATERAL
+// ══════════════════════════════════════════════
+let panelOpen=false, activeTab='people', unread=0;
+
+function openPanel(tab) {
+  const p = document.getElementById('side-panel');
+  if (panelOpen && activeTab===tab) { p.classList.remove('open'); panelOpen=false; }
+  else { p.classList.add('open'); panelOpen=true; switchTab(tab); }
+}
+function switchTab(tab) {
+  activeTab = tab;
+  ['people','chat'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('on', t===tab);
+    document.getElementById('pane-'+t).classList.toggle('on', t===tab);
+  });
+  if (tab==='chat') { unread=0; document.getElementById('bc').style.display='none'; const m=document.getElementById('chat-msgs'); m.scrollTop=m.scrollHeight; }
+}
+function renderParts() {
+  const list = document.getElementById('p-list');
+  const all = [{ name:myName, role:'Tú', mic:st.mic, cam:st.cam }].concat(Object.values(parts).map(p=>({ name:p.name, mic:p.mic??true, cam:p.cam??true })));
+  list.innerHTML = all.map(p => {
+    const ini = p.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    return `<div class="pitem"><div class="pava">${ini}</div>
+      <div style="flex:1"><div class="pname">${escH(p.name)}</div>${p.role?`<div class="prole">${p.role}</div>`:''}</div>
+      <div class="picons">
+        <span class="material-icons-round ${p.mic?'':'m'}">${p.mic?'mic':'mic_off'}</span>
+        <span class="material-icons-round">${p.cam?'videocam':'videocam_off'}</span>
+      </div></div>`;
+  }).join('');
+}
+function updCount() { document.getElementById('bp').textContent = Object.keys(parts).length+1; }
+
+// ══════════════════════════════════════════════
+//  CHAT
+// ══════════════════════════════════════════════
+let pendFiles=[], lastDate='';
+function chatKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
+function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,130)+'px'; }
+function handlePaste(e){ const it=e.clipboardData?.items; if(!it) return; for(const i of it){ if(i.type.startsWith('image/')){e.preventDefault();const f=i.getAsFile();if(f)addFile(f);return;} } }
+function triggerImgPick(){ const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=true;i.onchange=()=>handleFileSelect(i.files);i.click(); }
+function handleFileSelect(files){ for(const f of files) addFile(f); document.getElementById('file-input').value=''; }
+function addFile(f){ pendFiles.push(f); renderPrev(); }
+function cancelAttach(){ pendFiles=[]; renderPrev(); }
+function renderPrev(){
+  const b=document.getElementById('attach-prev'),i=document.getElementById('attach-prev-inner');
+  if(!pendFiles.length){b.style.display='none';i.innerHTML='';return;}
+  b.style.display='flex';i.innerHTML='';
+  pendFiles.forEach(f=>{
+    const w=document.createElement('div');
+    if(f.type.startsWith('image/')){ w.className='pthumb'; const img=document.createElement('img'); img.src=URL.createObjectURL(f); w.appendChild(img); }
+    else{ w.className='pfile-info'; w.innerHTML=`<span class="material-icons-round">${fIcon(f.name)}</span><span class="pfile-name">${escH(f.name)}</span>`; }
+    i.appendChild(w);
+  });
+}
+async function sendMsg(){
+  const inp=document.getElementById('chat-input'), txt=inp.value.trim();
+  if(pendFiles.length){ for(const f of pendFiles) await uploadSend(f); pendFiles=[]; renderPrev(); }
+  if(txt){
+    const d={roomId:ROOM_ID,nombre:myName,texto:txt,tipo:'text'};
+    socket.emit('send-message',d); renderMsg({...d,own:true});
+    inp.value=''; inp.style.height='auto';
+  }
+}
+async function uploadSend(file){
+  const fd=new FormData(); fd.append('file',file);
+  try{
+    const res=await fetch('/upload',{method:'POST',body:fd}); const j=await res.json(); if(!j.ok) return;
+    const d={roomId:ROOM_ID,nombre:myName,tipo:j.isImage?'image':'file',url:j.url,fileName:j.name,fileSize:fmtSize(j.size),texto:''};
+    socket.emit('share-file',d); renderMsg({...d,own:true});
+  }catch(e){ console.error(e); }
+}
+function bumpUnread(){
+  if(activeTab!=='chat'||!panelOpen){ unread++;
+    const b=document.getElementById('bc'); b.textContent=unread>9?'9+':unread; b.style.display='flex'; }
+}
+function renderMsg(data){
+  const c=document.getElementById('chat-msgs'), own=data.own===true;
+  const now=new Date();
+  const hora=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  const fecha=now.toLocaleDateString('es-PY',{day:'numeric',month:'long',year:'numeric'});
+  if(fecha!==lastDate){ lastDate=fecha; const s=document.createElement('div'); s.className='cdatesep'; s.textContent=fecha; c.appendChild(s); }
+  const w=document.createElement('div'); w.className='cmsg '+(own?'own':'other');
+  let content=''; const tipo=data.tipo||'text';
+  if(tipo==='image'){
+    const su=escA(data.url||''),sn=escA(data.fileName||'imagen');
+    content=`<div class="cimgw" onclick="openLB('${su}','${sn}')"><img src="${su}" alt="${sn}" loading="lazy">
+      <div class="cimgo"><span class="material-icons-round" style="font-size:36px;opacity:.9">zoom_in</span></div>
+      <a class="cimgdl" href="${su}" download="${sn}" onclick="event.stopPropagation()"><span class="material-icons-round">download</span></a></div>`;
+  } else if(tipo==='file'){
+    const su=escA(data.url||''),sn=escA(data.fileName||'archivo');
+    content=`<a class="cfile" href="${su}" download="${sn}" target="_blank">
+      <span class="material-icons-round cfile-icon">${fIcon(data.fileName||'')}</span>
+      <div class="cfile-info"><span class="cfile-name">${escH(data.fileName||'Archivo')}</span><span class="cfile-size">${escH(data.fileSize||'')}</span></div>
+      <span class="cfile-dl"><span class="material-icons-round">download</span></span></a>`;
+  } else {
+    content=`<div class="cbub">${escH(data.texto)}</div>`;
+  }
+  w.innerHTML=`${!own?`<div class="cname">${escH(data.nombre)}</div>`:''}${content}<div class="ctime">${hora}</div>`;
+  c.appendChild(w); c.scrollTop=c.scrollHeight;
+}
+function sysMsg(txt){ const c=document.getElementById('chat-msgs'); const d=document.createElement('div'); d.className='csys'; d.textContent=txt; c.appendChild(d); c.scrollTop=c.scrollHeight; }
+
+// ══════════════════════════════════════════════
+//  OTROS
+// ══════════════════════════════════════════════
+function leaveMeeting(){
+  if(isRec) stopRec();
+  if(!confirm('¿Salir de la reunión?')) return;
+  Object.values(peers).forEach(c=>c.close());
+  myStream?.getTracks().forEach(t=>t.stop());
+  screenStream?.getTracks().forEach(t=>t.stop());
+  socket.disconnect(); location.href='/';
+}
+function openLB(url,name){ document.getElementById('lbx-img').src=url; const dl=document.getElementById('lbx-dl'); dl.href=url; dl.download=name; document.getElementById('lightbox').style.display='flex'; document.body.style.overflow='hidden'; }
+function closeLB(){ document.getElementById('lightbox').style.display='none'; document.body.style.overflow=''; }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeLB(); });
+function copyLink(){ navigator.clipboard.writeText((APP_URL_JS||location.origin)+'/sala/'+ROOM_ID).then(()=>toast('✅ Enlace copiado','#1e8e3e')); }
+function startClock(){ const u=()=>{ const n=new Date(); document.getElementById('room-time').textContent=n.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}); }; u(); setInterval(u,30000); }
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+let toastT;
+function toast(msg, color='#323232', dur=4000){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.background=color; t.style.color='#fff';
+  t.classList.add('show'); clearTimeout(toastT);
+  if(dur>0) toastT=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+function escH(t){ if(!t)return''; return t.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+function escA(t){ return(t||'').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function fmtSize(b){ if(!b)return''; if(b<1024)return b+' B'; if(b<1048576)return(b/1024).toFixed(1)+' KB'; return(b/1048576).toFixed(1)+' MB'; }
+function fIcon(name){ const ext=(name||'').split('.').pop().toLowerCase(); const m={pdf:'picture_as_pdf',doc:'description',docx:'description',xls:'table_chart',xlsx:'table_chart',ppt:'slideshow',pptx:'slideshow',txt:'text_snippet',zip:'folder_zip',rar:'folder_zip',mp4:'videocam',mp3:'audio_file',jpg:'image',jpeg:'image',png:'image',gif:'image',webp:'image'}; return m[ext]||'insert_drive_file'; }
+
+
+// ══════════════════════════════════════════════
+//  ✋ LEVANTAR LA MANO
+// ══════════════════════════════════════════════
+let handRaised = false;
+function toggleHand() {
+  handRaised = !handRaised;
+  const btn = document.getElementById('btn-hand');
+  btn.classList.toggle('btn-hand-active', handRaised);
+  btn.title = handRaised ? 'Bajar mano' : 'Levantar mano';
+  socket.emit('raise-hand', { roomId: ROOM_ID, userId: 'yo', userName: myName, raised: handRaised });
+  if (handRaised) toast('✋ Levantaste la mano', '#f9ab00');
+  else toast('Bajaste la mano', '#9aa0a6');
+}
+
+socket.on('user-raised-hand', ({ userName, raised }) => {
+  if (raised) {
+    // Mostrar notificación
+    const n = document.createElement('div');
+    n.className = 'hand-notif-item';
+    n.innerHTML = '✋ ' + escH(userName) + ' levantó la mano';
+    document.getElementById('hands-notif').appendChild(n);
+    setTimeout(() => n.remove(), 5000);
+    playSound('join');
+  }
+});
+
+// ══════════════════════════════════════════════
+//  🖥️ VISTA PRESENTADOR
+// ══════════════════════════════════════════════
+let presenterMode = false;
+function togglePresenterMode() {
+  presenterMode = !presenterMode;
+  const grid = document.getElementById('vgrid');
+  const btn = document.getElementById('btn-presenter');
+  if (presenterMode) {
+    grid.classList.add('presenter-mode');
+    btn.classList.add('screen-on');
+    // El primer tile (yo) queda grande, el resto en columna
+    const tiles = Array.from(grid.children);
+    if (tiles.length > 1) {
+      const strip = document.createElement('div');
+      strip.className = 'strip';
+      strip.id = 'presenter-strip';
+      tiles.slice(1).forEach(t => strip.appendChild(t));
+      grid.appendChild(strip);
+    }
+    toast('Vista presentador activada', '#1a73e8');
+  } else {
+    grid.classList.remove('presenter-mode');
+    btn.classList.remove('screen-on');
+    const strip = document.getElementById('presenter-strip');
+    if (strip) {
+      Array.from(strip.children).forEach(t => grid.insertBefore(t, strip));
+      strip.remove();
+    }
+    fixGrid();
+    toast('Vista normal', '#9aa0a6');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  📝 SUBTÍTULOS (Web Speech API)
+// ══════════════════════════════════════════════
+let captionsOn = false, recognition = null;
+function toggleCaptions() {
+  const btn = document.getElementById('btn-captions');
+  const bar = document.getElementById('captions-bar');
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    toast('❌ Tu navegador no soporta subtítulos', '#ea4335'); return;
+  }
+  captionsOn = !captionsOn;
+  btn.classList.toggle('screen-on', captionsOn);
+  if (captionsOn) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'es-PY';
+    recognition.onresult = (e) => {
+      let txt = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        txt += e.results[i][0].transcript;
+      }
+      bar.textContent = myName + ': ' + txt;
+      bar.classList.add('show');
+      clearTimeout(bar._t);
+      bar._t = setTimeout(() => bar.classList.remove('show'), 3000);
+    };
+    recognition.onerror = () => {};
+    recognition.start();
+    toast('🎤 Subtítulos activados', '#1e8e3e');
+  } else {
+    recognition?.stop();
+    bar.classList.remove('show');
+    toast('Subtítulos desactivados', '#9aa0a6');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  📊 ENCUESTAS
+// ══════════════════════════════════════════════
+let currentPoll = null, myVote = null;
+
+function addPollOption() {
+  const c = document.getElementById('poll-opts-inputs');
+  const n = c.children.length + 1;
+  const inp = document.createElement('input');
+  inp.className = 'poll-opt-input';
+  inp.placeholder = 'Opción ' + n;
+  inp.style.cssText = 'width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:8px';
+  c.appendChild(inp);
+}
+
+function submitPoll() {
+  const q = document.getElementById('poll-q').value.trim();
+  if (!q) { toast('Escribí la pregunta', '#ea4335'); return; }
+  const opts = Array.from(document.querySelectorAll('.poll-opt-input')).map(i => i.value.trim()).filter(Boolean);
+  if (opts.length < 2) { toast('Necesitás al menos 2 opciones', '#ea4335'); return; }
+  socket.emit('create-poll', { roomId: ROOM_ID, question: q, options: opts });
+  document.getElementById('create-poll-modal').style.display = 'none';
+  document.getElementById('poll-q').value = '';
+}
+
+socket.on('poll-created', (poll) => {
+  currentPoll = poll; myVote = null;
+  const modal = document.getElementById('poll-modal');
+  document.getElementById('poll-question').textContent = poll.question;
+  const opts = document.getElementById('poll-options');
+  opts.innerHTML = '';
+  poll.options.forEach((opt, i) => {
+    const d = document.createElement('div');
+    d.className = 'poll-opt';
+    d.id = 'popt-' + i;
+    d.innerHTML = '<span style="flex:1;font-size:14px">' + escH(opt) + '</span><div class="poll-bar"><div class="poll-bar-fill" id="pbar-'+i+'" style="width:0%"></div></div>';
+    d.onclick = () => votePoll(i, opt);
+    opts.appendChild(d);
+  });
+  modal.classList.add('show');
+  playSound('join');
+  toast('📊 Nueva encuesta disponible', '#1a73e8');
+});
+
+function votePoll(idx, opt) {
+  if (myVote !== null) return;
+  myVote = idx;
+  document.getElementById('popt-' + idx)?.classList.add('voted');
+  socket.emit('vote-poll', { roomId: ROOM_ID, pollId: currentPoll.pollId, optionIndex: idx, voterName: myName });
+}
+
+socket.on('poll-vote', ({ optionIndex, totalVotes, percentages }) => {
+  if (!percentages) return;
+  percentages.forEach((pct, i) => {
+    const bar = document.getElementById('pbar-' + i);
+    if (bar) bar.style.width = pct + '%';
+  });
+});
+
+function closePoll() {
+  document.getElementById('poll-modal').classList.remove('show');
+  currentPoll = null; myVote = null;
+}
+
+// ══════════════════════════════════════════════
+//  🚪 BREAKOUT ROOMS
+// ══════════════════════════════════════════════
+const breakoutRooms = {};
+
+function createBreakout() {
+  const name = document.getElementById('br-name').value.trim();
+  if (!name) return;
+  const brId = 'br-' + Date.now();
+  breakoutRooms[brId] = { name, id: brId, members: [] };
+  socket.emit('create-breakout', { roomId: ROOM_ID, breakoutId: brId, name });
+  document.getElementById('br-name').value = '';
+}
+
+socket.on('breakout-created', ({ breakoutId, name }) => {
+  breakoutRooms[breakoutId] = { name, id: breakoutId };
+  renderBreakouts();
+  toast('🚪 Nueva sala de grupo: ' + name, '#1a73e8');
+});
+
+function joinBreakout(brId) {
+  socket.emit('join-breakout', { roomId: ROOM_ID, breakoutId: brId, userName: myName });
+  toast('Entraste a la sala: ' + breakoutRooms[brId]?.name, '#1e8e3e');
+  document.getElementById('breakout-modal').classList.remove('show');
+}
+
+socket.on('breakout-user-joined', ({ userName }) => {
+  toast(userName + ' entró a una sala de grupo', '#9aa0a6');
+});
+
+function renderBreakouts() {
+  const list = document.getElementById('breakout-list');
+  list.innerHTML = '';
+  Object.values(breakoutRooms).forEach(br => {
+    const d = document.createElement('div');
+    d.className = 'breakout-room-item';
+    d.innerHTML = '<span style="font-weight:600">' + escH(br.name) + '</span><button class="btn-join-br" onclick="joinBreakout(\'' + br.id + '\')">Entrar</button>';
+    list.appendChild(d);
+  });
+  if (!Object.keys(breakoutRooms).length) {
+    list.innerHTML = '<p style="color:#888;text-align:center;padding:16px">No hay salas de grupo todavía</p>';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  🎥 MIROTALK — IFRAME INTEGRADO EN TU SISTEMA
+// ══════════════════════════════════════════════
+
+const MIROTALK_URL  = '<%- MIROTALK_URL || "https://mirotalk-ifd.onrender.com" %>';
+const MIROTALK_ROOM = 'IFD-' + ROOM_ID.replace(/-/g,'').slice(0,12).toUpperCase();
+
+function getMiroName() {
+  return encodeURIComponent(myName || (SRV_USER && SRV_USER.name) || 'Participante');
+}
+
+function buildMiroUrl() {
+  return MIROTALK_URL + '/join?room=' + MIROTALK_ROOM
+    + '&name=' + getMiroName()
+    + '&audio=1&video=1&notify=0';
+}
+
+// Abre MiroTalk como iframe dentro de tu sistema
+function abrirMiroTalk() {
+  const url = buildMiroUrl();
+  const overlay = document.getElementById('miro-overlay');
+  const iframe  = document.getElementById('miro-iframe');
+  iframe.src = url;
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+// Volver al sistema (el iframe sigue corriendo, no corta la llamada)
+function volverAlSistema() {
+  document.getElementById('miro-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+  if (document.getElementById('lobby') &&
+      document.getElementById('lobby').style.display !== 'none') {
+    enterRoom();
+  }
+}
+
+// Finalizar llamada completamente
+function cerrarMiroTalk() {
+  document.getElementById('miro-iframe').src = '';
+  document.getElementById('miro-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// Aliases para botones existentes en el HTML
+function launchMiroTalk()  { abrirMiroTalk(); }
+function openMiroTalk()    { abrirMiroTalk(); }
+function closeMiroModal()  { const m=document.getElementById('mirotalk-modal'); if(m) m.classList.remove('show'); }
+function closeMiroFrame()  { cerrarMiroTalk(); }
+
+function notifyMiroTalkOpened() {
+  if (typeof socket !== 'undefined' && ROOM_ID) {
+    try {
+      socket.emit('send-message', {
+        roomId: ROOM_ID,
+        nombre: myName || 'Alguien',
+        texto: '🎥 ' + (myName || 'Alguien') + ' inició la videollamada',
+        tipo: 'text'
+      });
+    } catch(e) {}
+  }
+}
+
+</script>
+</body>
+</html>

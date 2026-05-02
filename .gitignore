@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (NO subir)
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Uploads temporales (opcional)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
