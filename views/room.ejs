@@ -251,8 +251,71 @@
     .icon-btn .material-icons-round{font-size:22px}
     .badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;background:var(--maroon);color:#fff;border-radius:8px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
     #main{flex:1;display:flex;overflow:hidden;position:relative}
-    #video-area{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;background:var(--bg)}
-    #vgrid{width:100%;height:100%;display:grid;gap:8px;align-content:center;justify-content:center;align-items:center;padding:8px}
+    #video-area{flex:1;display:flex;overflow:hidden;background:var(--bg);position:relative}
+
+    /* ══════════ LAYOUT TIPO GOOGLE MEET ══════════ */
+    /* Modo grilla normal (sin nadie destacado) */
+    #vgrid{
+      width:100%;height:100%;display:grid;gap:8px;
+      align-content:center;justify-content:center;align-items:center;padding:8px;
+    }
+
+    /* Modo spotlight: video principal grande + tira lateral */
+    #video-area.spotlight-mode{flex-direction:row;gap:0}
+    #main-tile-wrap{
+      flex:1;height:100%;display:flex;align-items:center;justify-content:center;
+      padding:12px;background:var(--bg);position:relative;
+    }
+    #main-tile-wrap .vtile{
+      width:100%;height:100%;aspect-ratio:unset;border-radius:16px;
+      border:3px solid var(--maroon);box-shadow:0 0 0 3px rgba(109,26,46,.35),0 8px 32px rgba(0,0,0,.5);
+    }
+    #strip{
+      width:200px;min-width:200px;height:100%;
+      display:flex;flex-direction:column;gap:8px;
+      overflow-y:auto;padding:10px 8px;background:#1a1a1d;
+      border-left:1px solid var(--brd);
+    }
+    #strip .vtile{
+      width:100%;aspect-ratio:16/9;height:auto;flex-shrink:0;
+      border-radius:10px;cursor:pointer;transition:transform .15s,box-shadow .15s;
+    }
+    #strip .vtile:hover{transform:scale(1.03);box-shadow:0 4px 20px rgba(109,26,46,.4)}
+    #strip .vtile.host-tile{border:2px solid var(--maroon)}
+    #strip-label{
+      font-size:11px;color:var(--t2);text-align:center;padding:4px 0;
+      font-weight:600;letter-spacing:.5px;text-transform:uppercase;flex-shrink:0;
+    }
+    /* Tooltip "click para agrandar" */
+    #strip .vtile::after{
+      content:'Agrandar';position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(0,0,0,.75);color:#fff;font-size:11px;font-weight:600;
+      padding:4px 10px;border-radius:8px;pointer-events:none;
+      opacity:0;transition:opacity .2s;white-space:nowrap;
+    }
+    #strip .vtile:hover::after{opacity:1}
+    /* Badge "ANFITRIÓN" */
+    .host-badge{
+      position:absolute;top:8px;left:8px;
+      background:var(--maroon);color:#fff;
+      font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;
+      letter-spacing:.5px;text-transform:uppercase;z-index:5;
+    }
+    /* Badge "TÚ" */
+    .self-badge{
+      position:absolute;top:8px;right:8px;
+      background:rgba(0,0,0,.6);color:#fff;
+      font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;z-index:5;
+    }
+    /* Indicador compartiendo pantalla */
+    .screen-badge{
+      position:absolute;top:8px;left:50%;transform:translateX(-50%);
+      background:#00796b;color:#fff;
+      font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;z-index:5;
+      display:flex;align-items:center;gap:4px;
+    }
+
     .vtile{position:relative;background:var(--surface);border-radius:12px;overflow:hidden;aspect-ratio:16/9;min-height:0;border:3px solid transparent;transition:border-color .15s,box-shadow .2s;box-shadow:0 2px 12px rgba(0,0,0,.4)}
     .vtile.speaking{border-color:#1e8e3e;box-shadow:0 0 0 2px #1e8e3e,0 4px 20px rgba(30,142,62,.3)}
     .vtile video{width:100%;height:100%;object-fit:cover;display:block}
@@ -574,6 +637,12 @@
 
   <div id="main">
     <div id="video-area">
+      <!-- Modo spotlight: video principal grande + tira lateral -->
+      <div id="main-tile-wrap" style="display:none"></div>
+      <div id="strip" style="display:none">
+        <div id="strip-label">Participantes</div>
+      </div>
+      <!-- Modo grilla normal -->
       <div id="vgrid" class="n1"></div>
     </div>
     <aside id="side-panel">
@@ -1301,7 +1370,14 @@ socket.on('peer-id-updated', ({ tempId, peerId, userName, userEmail, userPhoto }
 
 socket.on('user-disconnected', (peerId, nombre) => {
   if (peers[peerId]) { peers[peerId].close(); delete peers[peerId]; }
-  document.getElementById('tile-' + peerId)?.remove();
+  // Si el tile que se va estaba en spotlight, limpiar
+  if (spotlightId === peerId) clearSpotlight();
+  // Devolver tile al vgrid antes de remover (por si está en strip o mainWrap)
+  const tile = document.getElementById('tile-' + peerId);
+  if (tile) {
+    document.getElementById('vgrid').appendChild(tile);
+    tile.remove();
+  }
   const n = nombre || parts[peerId]?.name || 'Alguien';
   delete parts[peerId];
   sysMsg(n + ' salió'); renderParts(); updCount(); fixGrid(); playSound('leave');
@@ -1313,6 +1389,25 @@ socket.on('user-media-state', (peerId, state) => {
 });
 socket.on('user-screen-share', (peerId, active) => {
   if (parts[peerId]) { parts[peerId].screen = active; renderParts(); }
+  // Auto-spotlight: si alguien comparte pantalla → ponerlo grande
+  if (active) {
+    setSpotlight(peerId);
+    const nombre = parts[peerId]?.name || 'Alguien';
+    toast('🖥️ ' + nombre + ' está compartiendo pantalla', '#00796b');
+    // Badge visual
+    const tile = document.getElementById('tile-' + peerId);
+    if (tile && !tile.querySelector('.screen-badge')) {
+      const badge = document.createElement('div');
+      badge.className = 'screen-badge';
+      badge.innerHTML = '<span class="material-icons-round" style="font-size:13px">present_to_all</span> Compartiendo pantalla';
+      tile.appendChild(badge);
+    }
+  } else {
+    // Dejó de compartir → quitar badge y limpiar spotlight si era él
+    const tile = document.getElementById('tile-' + peerId);
+    tile?.querySelector('.screen-badge')?.remove();
+    if (spotlightId === peerId) clearSpotlight();
+  }
 });
 socket.on('user-reaction', (nombre, emoji) => toast(emoji + ' ' + nombre, '#323232', 2500));
 socket.on('user-recording-started', ({ userName }) => toast('🎥 ' + userName + ' está grabando', '#f9ab00'));
@@ -1421,27 +1516,125 @@ function addTile(stream, id, nombre, self) {
   let tile = document.getElementById('tile-'+id);
   if (tile) { tile.querySelector('video').srcObject = stream; return; }
   tile = document.createElement('div');
-  tile.className = 'vtile' + (self ? ' self' : '');
+  const isHost = self && IS_CREATOR;
+  tile.className = 'vtile' + (self ? ' self' : '') + (isHost ? ' host-tile' : '');
   tile.id = 'tile-' + id;
+  tile.dataset.id = id;
+  tile.dataset.nombre = nombre;
+  tile.dataset.self = self ? '1' : '0';
+  tile.dataset.isHost = isHost ? '1' : '0';
   const ini = nombre.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
   tile.innerHTML = `
+    ${isHost ? '<div class="host-badge">Anfitrión</div>' : ''}
+    ${self && !IS_CREATOR ? '<div class="self-badge">Tú</div>' : ''}
+    ${self && IS_CREATOR ? '<div class="self-badge">Tú (Anfitrión)</div>' : ''}
     <div class="vph" id="ph-${id}"><div class="vava">${ini}</div></div>
     <video autoplay playsinline ${self?'muted':''}></video>
     <div class="vlbl"><span class="material-icons-round">mic</span>${escH(nombre)}</div>`;
   const v = tile.querySelector('video');
   v.srcObject = stream;
   v.onloadedmetadata = () => { const p=document.getElementById('ph-'+id); if(p) p.style.display='none'; };
+  // Click para poner en spotlight
+  tile.addEventListener('click', () => setSpotlight(id));
+  // Registrar y aplicar layout
   document.getElementById('vgrid').appendChild(tile);
   fixGrid();
-  // Iniciar detector de voz
   startSpeakingDetector(stream, id);
 }
+
+// ══════════════════════════════════════════════
+//  SISTEMA SPOTLIGHT TIPO GOOGLE MEET
+// ══════════════════════════════════════════════
+let spotlightId = null; // ID del tile actualmente en grande
+
+function setSpotlight(id) {
+  const tile = document.getElementById('tile-' + id);
+  if (!tile) return;
+  // Si ya está en spotlight y se clickea de nuevo → quitar spotlight
+  if (spotlightId === id) {
+    clearSpotlight();
+    return;
+  }
+  spotlightId = id;
+  applySpotlightLayout();
+}
+
+function clearSpotlight() {
+  spotlightId = null;
+  applySpotlightLayout();
+}
+
+function applySpotlightLayout() {
+  const videoArea = document.getElementById('video-area');
+  const mainWrap  = document.getElementById('main-tile-wrap');
+  const strip     = document.getElementById('strip');
+  const vgrid     = document.getElementById('vgrid');
+  const allTiles  = Array.from(document.querySelectorAll('.vtile'));
+
+  if (!spotlightId || allTiles.length <= 1) {
+    // Modo grilla normal
+    videoArea.classList.remove('spotlight-mode');
+    mainWrap.style.display = 'none';
+    strip.style.display = 'none';
+    vgrid.style.display = 'grid';
+    allTiles.forEach(t => vgrid.appendChild(t));
+    fixGrid();
+    return;
+  }
+
+  // Modo spotlight
+  videoArea.classList.add('spotlight-mode');
+  mainWrap.style.display = 'flex';
+  strip.style.display = 'flex';
+  vgrid.style.display = 'none';
+
+  const spotTile = document.getElementById('tile-' + spotlightId);
+  if (spotTile) {
+    mainWrap.appendChild(spotTile);
+    // Quitar aspect-ratio para que llene el contenedor
+    spotTile.style.aspectRatio = 'unset';
+    spotTile.style.width = '100%';
+    spotTile.style.height = '100%';
+  }
+
+  // Resto van al strip
+  // Limpiar strip (excepto el label)
+  const stripLabel = document.getElementById('strip-label');
+  while (strip.lastChild && strip.lastChild !== stripLabel) strip.removeChild(strip.lastChild);
+
+  allTiles.forEach(t => {
+    if (t.id !== 'tile-' + spotlightId) {
+      t.style.aspectRatio = '';
+      t.style.width = '';
+      t.style.height = '';
+      strip.appendChild(t);
+    }
+  });
+}
+
+// Auto-spotlight al creador cuando entra → lo pone grande por defecto
+function autoSpotlightHost() {
+  if (IS_CREATOR) {
+    // El creador entra en grande automáticamente cuando hay más de 1 persona
+    const allTiles = document.querySelectorAll('.vtile');
+    if (allTiles.length > 1 && !spotlightId) {
+      setSpotlight('yo');
+    }
+  } else {
+    // Invitado: poner al host en grande si existe
+    const hostTile = document.querySelector('.vtile.host-tile');
+    if (hostTile && !spotlightId) {
+      setSpotlight(hostTile.dataset.id);
+    }
+  }
+}
+
 function fixGrid() {
   const g = document.getElementById('vgrid');
-  const n = g.children.length;
-  // Layout tipo Google Meet
+  const tiles = Array.from(g.querySelectorAll('.vtile'));
+  const n = tiles.length;
   g.className = '';
-  if (n === 1) {
+  if (n <= 1) {
     g.style.gridTemplateColumns = '1fr';
     g.style.gridTemplateRows = '1fr';
   } else if (n === 2) {
@@ -1459,15 +1652,13 @@ function fixGrid() {
   } else if (n <= 16) {
     g.style.gridTemplateColumns = 'repeat(4, 1fr)';
     g.style.gridTemplateRows = 'repeat(4, 1fr)';
-  } else if (n <= 25) {
-    g.style.gridTemplateColumns = 'repeat(5, 1fr)';
-    g.style.gridTemplateRows = 'repeat(5, 1fr)';
   } else {
-    // Para muchos usuarios: scroll
     g.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
     g.style.gridTemplateRows = 'auto';
     g.style.overflowY = 'auto';
   }
+  // Auto-spotlight cuando entra el segundo participante
+  if (n === 2) setTimeout(autoSpotlightHost, 300);
 }
 
 // ══════════════════════════════════════════════
@@ -1493,6 +1684,11 @@ async function toggleScreen() {
     screenStream?.getTracks().forEach(t => t.stop()); screenStream = null; st.screen = false;
     document.getElementById('btn-screen').classList.remove('screen-on');
     if (myStream) { const t=document.getElementById('tile-yo'); if(t) t.querySelector('video').srcObject=myStream; }
+    // Quitar badge de pantalla compartida
+    document.querySelector('#tile-yo .screen-badge')?.remove();
+    socket.emit('screen-share', { roomId: ROOM_ID, active: false });
+    // Si el spotlight era yo por pantalla, limpiar
+    if (spotlightId === 'yo') clearSpotlight();
     return;
   }
   try {
@@ -1504,7 +1700,19 @@ async function toggleScreen() {
       if (s) s.replaceTrack(track);
     });
     const mv = document.querySelector('#tile-yo video'); if (mv) mv.srcObject = screenStream;
+    // Badge visual en el tile
+    const tile = document.getElementById('tile-yo');
+    if (tile && !tile.querySelector('.screen-badge')) {
+      const badge = document.createElement('div');
+      badge.className = 'screen-badge';
+      badge.innerHTML = '<span class="material-icons-round" style="font-size:13px">present_to_all</span> Compartiendo pantalla';
+      tile.appendChild(badge);
+    }
+    // Auto-spotlight: poner al que comparte pantalla en grande
+    setSpotlight('yo');
+    socket.emit('screen-share', { roomId: ROOM_ID, active: true });
     track.onended = toggleScreen;
+    toast('🖥️ Compartiendo pantalla - todos te ven en grande', '#00796b');
   } catch(e) {}
 }
 
@@ -1787,35 +1995,20 @@ socket.on('user-raised-hand', ({ userName, raised }) => {
 });
 
 // ══════════════════════════════════════════════
-//  🖥️ VISTA PRESENTADOR
+//  🖥️ VISTA PRESENTADOR (usa el sistema spotlight)
 // ══════════════════════════════════════════════
 let presenterMode = false;
 function togglePresenterMode() {
   presenterMode = !presenterMode;
-  const grid = document.getElementById('vgrid');
   const btn = document.getElementById('btn-presenter');
   if (presenterMode) {
-    grid.classList.add('presenter-mode');
     btn.classList.add('screen-on');
-    // El primer tile (yo) queda grande, el resto en columna
-    const tiles = Array.from(grid.children);
-    if (tiles.length > 1) {
-      const strip = document.createElement('div');
-      strip.className = 'strip';
-      strip.id = 'presenter-strip';
-      tiles.slice(1).forEach(t => strip.appendChild(t));
-      grid.appendChild(strip);
-    }
-    toast('Vista presentador activada', '#1a73e8');
+    // Poner el creador/yo en spotlight
+    setSpotlight('yo');
+    toast('Vista presentador activada — clic en cualquier video para agrandarlo', '#1a73e8', 4000);
   } else {
-    grid.classList.remove('presenter-mode');
     btn.classList.remove('screen-on');
-    const strip = document.getElementById('presenter-strip');
-    if (strip) {
-      Array.from(strip.children).forEach(t => grid.insertBefore(t, strip));
-      strip.remove();
-    }
-    fixGrid();
+    clearSpotlight();
     toast('Vista normal', '#9aa0a6');
   }
 }
