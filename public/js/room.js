@@ -97,7 +97,7 @@ async function inicializarPeer() {
     state.peerId = peerId;
     
     // Unirse a la sala
-    socket.emit('join-room', state.roomId, state.peerId, state.miNombre, state.isHost, state.miEmail, state.miPhoto);
+    socket.emit('join-room', state.roomId, state.peerId, state.miNombre, state.miEmail, state.miPhoto, state.isHost);
   });
   
   miPeer.on('call', (call) => {

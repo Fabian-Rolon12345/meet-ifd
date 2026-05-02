@@ -21,6 +21,7 @@ const APP_URL    = process.env.APP_URL || `http://localhost:${PORT}`;
 const NODE_ENV   = process.env.NODE_ENV || "development";
 const IFD_PASS   = process.env.IFD_PASSWORD || "IFD12345SANTAROSAMISIONES";
 const ADMIN_PASS = process.env.ADMIN_PASS || "ifd2024";
+const MIROTALK_URL = process.env.MIROTALK_URL || "https://p2p.mirotalk.com";
 
 // ================= EXPRESS =================
 app.set("view engine", "ejs");
@@ -132,7 +133,15 @@ app.post('/api/verificar-password', (req, res) => {
 });
 
 // ================= PEERJS =================
-app.use("/peerjs", ExpressPeerServer(server, { debug: false, path: "/peerjs", proxied: true }));
+app.use("/peerjs", ExpressPeerServer(server, {
+  debug: false,
+  path: "/",
+  proxied: true,
+  allow_discovery: false,
+  concurrent_limit: 5000,
+  alive_timeout: 60000,
+  key: 'peerjs'
+}));
 
 // ================= CARPETAS =================
 ["public/uploads","public/img","public/recordings","public/js"].forEach(d => {
@@ -216,7 +225,11 @@ app.get("/", (req, res) => {
 app.get("/nueva", (req, res) => {
   if (!req.isAuthenticated()) return res.redirect('/');
   if (!isIFDVerified(req))    return res.redirect('/verificar-ifd');
-  res.redirect(`/sala/${uuidV4()}`);
+  const newRoomId = uuidV4();
+  // Guardar en sesión quién es el creador de esta sala
+  if (!req.session.createdRooms) req.session.createdRooms = [];
+  req.session.createdRooms.push(newRoomId);
+  req.session.save(() => res.redirect(`/sala/${newRoomId}`));
 });
 
 app.get("/sala/:room", (req, res) => {
@@ -224,62 +237,139 @@ app.get("/sala/:room", (req, res) => {
     return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:80px">
       <h1>⚠️ En mantenimiento</h1><p>${serverStatus.message||"Volvemos pronto."}</p></body></html>`);
   }
+  // Verificar si este usuario fue quien CREÓ esta sala
+  const createdRooms = req.session.createdRooms || [];
+  const isCreator = createdRooms.includes(req.params.room);
   res.render("room", {
     roomId:      req.params.room,
     user:        req.isAuthenticated() ? req.user : null,
     ifdVerified: isIFDVerified(req),
-    APP_URL
+    isCreator:   isCreator,
+    APP_URL,
+    MIROTALK_URL
   });
 });
 
 // ================= SOCKET.IO =================
 io.on("connection", (socket) => {
 
-  socket.on("join-room", (roomId, userId, userName, isHost, userEmail, userPhoto) => {
-    if (!rooms[roomId]) {
-      rooms[roomId] = { host: socket.id, hostUserId: userId, participants: {}, createdAt: Date.now() };
-    }
+  socket.on("join-room", (roomId, userId, userName, userEmail, userPhoto, isCreator) => {
     if (!waitingRooms[roomId]) waitingRooms[roomId] = [];
 
-    rooms[roomId].participants[socket.id] = { userId, userName, userEmail, userPhoto, socketId: socket.id };
+    // ✅ REGLA DE ORO: el host SIEMPRE es quien tiene la sala en su sesión (isCreator=true)
+    // Si isCreator=false, SIEMPRE va a sala de espera, sin excepción.
+    const isReconnectingHost = rooms[roomId]?.hostUserId === userId && userId;
+    const shouldBeHost = isCreator === true || isReconnectingHost;
 
-    if (isHost || rooms[roomId].hostUserId === userId) {
-      rooms[roomId].host = socket.id;
-      rooms[roomId].hostUserId = userId;
+    if (shouldBeHost) {
+      if (!rooms[roomId]) {
+        rooms[roomId] = { host: socket.id, hostUserId: userId, participants: {}, createdAt: Date.now() };
+      } else {
+        rooms[roomId].host = socket.id;
+        rooms[roomId].hostUserId = userId;
+      }
+      rooms[roomId].participants[socket.id] = { userId, userName, userEmail, userPhoto, socketId: socket.id };
       socket.join(roomId);
+
+      const waitList = waitingRooms[roomId] || [];
       socket.emit("joined-room", {
         asHost: true,
         participants: Object.values(rooms[roomId].participants),
+        waitingList: waitList,
         user: { name: userName, email: userEmail, photo: userPhoto }
       });
       socket.to(roomId).emit("user-connected", userId, userName, userEmail, userPhoto);
-      if (waitingRooms[roomId].length > 0) socket.emit("waiting-list", waitingRooms[roomId]);
+      console.log("✅ HOST: " + userName + " | sala: " + roomId);
+
+      // Notificar al host si hay gente esperando (con delay para que el cliente inicialice)
+      if (waitList.length > 0) {
+        const notifyHost = () => {
+          socket.emit("waiting-list", waitingRooms[roomId] || []);
+          (waitingRooms[roomId] || []).forEach(u => {
+            socket.emit("user-waiting", { ...u, totalWaiting: (waitingRooms[roomId] || []).length });
+          });
+        };
+        setTimeout(notifyHost, 800);
+        setTimeout(notifyHost, 2500); // segundo intento
+      }
       return;
     }
 
-    // → Sala de espera
-    const waitData = { socketId: socket.id, userId, userName, userEmail, userPhoto, requestedAt: Date.now() };
-    waitingRooms[roomId].push(waitData);
-
-    if (rooms[roomId].host) {
-      io.to(rooms[roomId].host).emit("user-waiting", { ...waitData, totalWaiting: waitingRooms[roomId].length });
+    // INVITADO → siempre sala de espera
+    if (!rooms[roomId]) {
+      rooms[roomId] = { host: null, hostUserId: null, participants: {}, createdAt: Date.now() };
     }
-    socket.emit("waiting-approval", { message: "Esperando que el anfitrión te admita...", position: waitingRooms[roomId].length });
+
+    socket.join(roomId);
+    const waitData = { socketId: socket.id, userId, userName, userEmail, userPhoto, requestedAt: Date.now() };
+    // Evitar duplicados
+    if (!waitingRooms[roomId].find(u => u.socketId === socket.id)) {
+      waitingRooms[roomId].push(waitData);
+    }
+
+    // Avisar al host si ya existe
+    if (rooms[roomId].host) {
+      const hostSocketId = rooms[roomId].host;
+      const notifyData = { ...waitData, totalWaiting: waitingRooms[roomId].length };
+      io.to(hostSocketId).emit("user-waiting", notifyData);
+      // Reintentos por si el cliente no estaba listo
+      setTimeout(() => io.to(hostSocketId).emit("user-waiting", notifyData), 2000);
+      setTimeout(() => io.to(hostSocketId).emit("user-waiting", notifyData), 5000);
+    }
+
+    socket.emit("waiting-approval", {
+      message: "Esperando que el anfitrión te admita...",
+      position: waitingRooms[roomId].length
+    });
+    console.log("⏳ ESPERA: " + userName + " | sala: " + roomId);
+  });
+
+  // Actualizar peerId real cuando PeerJS conecta
+  socket.on("peer-ready", ({ roomId, peerId, tempId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    const participant = room.participants[socket.id];
+    if (participant) {
+      participant.userId = peerId;
+    }
+    // Notificar a todos los de la sala con el peerId real para iniciar llamadas de video
+    socket.to(roomId).emit("peer-id-updated", { tempId, peerId,
+      userName: participant?.userName || '',
+      userEmail: participant?.userEmail || '',
+      userPhoto: participant?.userPhoto || ''
+    });
+    console.log('🎥 PeerJS listo:', peerId.slice(0,8), '| sala:', roomId);
+  });
+
+  // Host pide lista de espera actualizada
+  socket.on("get-waiting-list", (roomId) => {
+    if (rooms[roomId]?.host === socket.id) {
+      socket.emit("waiting-list", waitingRooms[roomId] || []);
+    }
   });
 
   socket.on("admit-user", (targetSocketId, roomId) => {
     const room = rooms[roomId];
     if (!room || room.host !== socket.id) return;
-    const idx = waitingRooms[roomId]?.findIndex(u => u.socketId === targetSocketId);
-    if (idx === -1 || idx === undefined) return;
+    const idx = (waitingRooms[roomId] || []).findIndex(u => u.socketId === targetSocketId);
+    if (idx === -1) return;
     const [user] = waitingRooms[roomId].splice(idx, 1);
     const ts = io.sockets.sockets.get(targetSocketId);
     if (ts) {
       ts.join(roomId);
+      // Agregar al room
+      room.participants[targetSocketId] = {
+        userId: user.userId, userName: user.userName,
+        userEmail: user.userEmail, userPhoto: user.userPhoto, socketId: targetSocketId
+      };
+      // Notificar al admitido
       ts.emit("admitted");
       ts.emit("joined-room", { asHost: false, user: { name: user.userName, email: user.userEmail, photo: user.userPhoto } });
+      // Notificar a todos los demás en la sala
       socket.to(roomId).emit("user-connected", user.userId, user.userName, user.userEmail, user.userPhoto);
+      console.log("✅ ADMITIDO: " + user.userName);
     }
+    // Actualizar lista de espera del host
     socket.emit("waiting-list", waitingRooms[roomId]);
   });
 
@@ -296,6 +386,42 @@ io.on("connection", (socket) => {
     const ts = io.sockets.sockets.get(targetSocketId);
     if (ts) { ts.leave(roomId); delete room.participants[targetSocketId]; }
     socket.to(roomId).emit("user-disconnected", targetSocketId);
+  });
+
+  // ✋ LEVANTAR LA MANO
+  socket.on("raise-hand", (data) => {
+    io.to(data.roomId).emit("user-raised-hand", { socketId: socket.id, userId: data.userId, userName: data.userName, raised: data.raised });
+  });
+
+  // 📊 ENCUESTAS
+  socket.on("create-poll", (data) => {
+    io.to(data.roomId).emit("poll-created", { ...data, pollId: Date.now(), votes: {} });
+  });
+  socket.on("vote-poll", (data) => {
+    // Calcular porcentajes
+    if (!global.pollVotes) global.pollVotes = {};
+    const key = data.pollId;
+    if (!global.pollVotes[key]) global.pollVotes[key] = {};
+    global.pollVotes[key][data.voterName] = data.optionIndex;
+    const votes = Object.values(global.pollVotes[key]);
+    const total = votes.length;
+    const counts = {};
+    votes.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+    const maxOpt = Math.max(...Object.keys(counts).map(Number)) + 1;
+    const percentages = Array.from({length: maxOpt}, (_, i) => total ? Math.round((counts[i] || 0) / total * 100) : 0);
+    io.to(data.roomId).emit("poll-vote", { ...data, totalVotes: total, percentages });
+  });
+
+  // 🚪 BREAKOUT ROOMS
+  socket.on("create-breakout", (data) => {
+    io.to(data.roomId).emit("breakout-created", data);
+  });
+  socket.on("join-breakout", (data) => {
+    socket.join(data.breakoutId);
+    io.to(data.breakoutId).emit("breakout-user-joined", { userName: data.userName });
+  });
+  socket.on("end-breakout", (data) => {
+    io.to(data.roomId).emit("breakout-ended");
   });
 
   socket.on("mute-user",         (tid, rid) => { if (rooms[rid]?.host === socket.id) io.to(tid).emit("force-muted"); });
@@ -333,6 +459,7 @@ app.use((err, req, res, next) => { console.error("❌", err.message); res.status
 server.listen(PORT, () => {
   console.log(`\n✅ IFD Meet → ${APP_URL}`);
   console.log(`🔑 IFD Pass: ${IFD_PASS}`);
+  console.log(`🎥 MiroTalk: ${MIROTALK_URL}`);
   console.log(`📧 Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅' : '❌ Falta GOOGLE_CLIENT_ID'}\n`);
 });
 

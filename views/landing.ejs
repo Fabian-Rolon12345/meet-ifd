@@ -148,7 +148,7 @@
     
     function startInstantMeeting() {
       if (!isLoggedIn) { showSigninPrompt(); return; }
-      window.location.href = '/sala/' + generateRoomId() + '?host=1';
+      window.location.href = '/nueva';
     }
     
     function createMeetingLink() {
@@ -173,7 +173,7 @@
     
     function goToMeeting() {
       if (!isLoggedIn) return;
-      window.location.href = pendingLink + '?host=1';
+      window.location.href = '/nueva';
     }
     
     function toggleJoinButton() {
