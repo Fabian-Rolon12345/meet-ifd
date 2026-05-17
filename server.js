@@ -380,13 +380,21 @@ io.on("connection", (socket) => {
     if (rooms[roomId]?.host === socket.id) socket.emit("waiting-list", waitingRooms[roomId] || []);
   });
 
-  socket.on("kick-user", (targetSocketId, roomId) => {
+  socket.on("kick-user", (targetId, roomId) => {
     const room = rooms[roomId];
     if (!room || room.host !== socket.id) return;
+    // targetId puede ser socketId o peerId - buscar en participants
+    let targetSocketId = targetId;
+    // Si no es un socket directo, buscar por userId (peerId)
+    if (!io.sockets.sockets.get(targetId)) {
+      const found = Object.entries(room.participants).find(([sid, p]) => p.userId === targetId);
+      if (found) targetSocketId = found[0];
+    }
     io.to(targetSocketId).emit("kicked", "Fuiste expulsado de la reunion.");
     const ts = io.sockets.sockets.get(targetSocketId);
     if (ts) { ts.leave(roomId); delete room.participants[targetSocketId]; }
-    socket.to(roomId).emit("user-disconnected", targetSocketId);
+    // Notificar a TODOS en la sala (incluyendo el host) para quitar el tile
+    io.to(roomId).emit("user-disconnected", targetId);
   });
 
   socket.on("raise-hand",        (data) => { io.to(data.roomId).emit("user-raised-hand", { socketId: socket.id, userId: data.userId, userName: data.userName, raised: data.raised }); });
@@ -404,7 +412,16 @@ io.on("connection", (socket) => {
     const percentages = Array.from({length: maxOpt}, (_, i) => total ? Math.round((counts[i] || 0) / total * 100) : 0);
     io.to(data.roomId).emit("poll-vote", { ...data, totalVotes: total, percentages });
   });
-  socket.on("mute-user",         (tid, rid) => { if (rooms[rid]?.host === socket.id) io.to(tid).emit("force-muted"); });
+  socket.on("mute-user",         (tid, rid) => {
+    if (rooms[rid]?.host !== socket.id) return;
+    let targetSocketId = tid;
+    const room = rooms[rid];
+    if (room && !io.sockets.sockets.get(tid)) {
+      const found = Object.entries(room.participants).find(([sid, p]) => p.userId === tid);
+      if (found) targetSocketId = found[0];
+    }
+    io.to(targetSocketId).emit("force-muted");
+  });
   socket.on("send-message",      (data) => { io.to(data.roomId).emit("receive-message", { ...data, time: new Date().toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"}), timestamp: Date.now() }); });
   socket.on("share-file",        (data) => { io.to(data.roomId).emit("receive-file", { ...data, time: new Date().toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"}), timestamp: Date.now() }); });
   socket.on("screen-share-start",(data) => { socket.to(data.roomId).emit("user-screen-share", data.userId, true); });
