@@ -136,6 +136,7 @@
   <script>
     let pendingLink = "";
     const isLoggedIn = <%= typeof user !== 'undefined' && user ? 'true' : 'false' %>;
+    const isTeacher = <%= (typeof userRole !== 'undefined' && userRole === 'docente' && typeof ifdVerified !== 'undefined' && ifdVerified) ? 'true' : 'false' %>;
     
     function toggleDropdown() {
       const dropdown = document.getElementById('meeting-dropdown');
@@ -143,16 +144,22 @@
     }
     
     function showSigninPrompt() {
-      showToast('🔐 Iniciá sesión para crear reuniones', 'info');
+      showToast('🔐 Iniciá sesión con Google para crear reuniones', 'info');
+    }
+    
+    function showOnlyTeachersMsg() {
+      showToast('⚠️ Solo los docentes pueden iniciar reuniones. Los estudiantes ingresan por el enlace.', 'info');
     }
     
     function startInstantMeeting() {
       if (!isLoggedIn) { showSigninPrompt(); return; }
+      if (!isTeacher) { showOnlyTeachersMsg(); return; }
       window.location.href = '/nueva';
     }
     
     function createMeetingLink() {
       if (!isLoggedIn) { showSigninPrompt(); return; }
+      if (!isTeacher) { showOnlyTeachersMsg(); return; }
       pendingLink = location.origin + '/sala/' + generateRoomId();
       document.getElementById('generated-link').value = pendingLink;
       document.getElementById('link-modal').style.display = 'flex';

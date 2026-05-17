@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IFD Meet - ¿Sos docente o estudiante?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Roboto',sans-serif;
+      min-height:100vh;
+      background:linear-gradient(135deg,#0d0f11 0%,#1a0a12 50%,#0d0f11 100%);
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;
+      background:
+        radial-gradient(ellipse at 20% 30%,rgba(109,26,46,0.18) 0%,transparent 55%),
+        radial-gradient(ellipse at 80% 70%,rgba(26,115,232,0.08) 0%,transparent 55%);
+      pointer-events:none;
+    }
+
+    .card{
+      background:#fff;border-radius:28px;padding:44px 40px;
+      width:100%;max-width:480px;
+      box-shadow:0 40px 100px rgba(0,0,0,0.6);
+      position:relative;overflow:hidden;
+      animation:slideUp .45s cubic-bezier(0.16,1,0.3,1);
+    }
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#6d1a2e,#a02040,#e8590c,#6d1a2e);background-size:200%;animation:gradShift 4s linear infinite;}
+    @keyframes gradShift{0%{background-position:0%}100%{background-position:200%}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
+
+    .logo-wrap{text-align:center;margin-bottom:28px;}
+    .logo-img-wrap{
+      width:78px;height:78px;border-radius:20px;
+      background:linear-gradient(135deg,#6d1a2e,#a02040);
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto 14px;
+      box-shadow:0 12px 32px rgba(109,26,46,0.45);
+      overflow:hidden;
+    }
+    .logo-img-wrap img{width:100%;height:100%;object-fit:cover;border-radius:20px;}
+    .logo-img-wrap .fb{font-size:36px;}
+    h1{font-family:'Google Sans',sans-serif;font-size:26px;font-weight:700;color:#202124;margin-bottom:4px;}
+    .sub{font-size:13px;color:#5f6368;line-height:1.5;}
+
+    .user-row{
+      display:flex;align-items:center;gap:12px;
+      background:#f8f9fa;border-radius:14px;padding:12px 16px;margin-bottom:28px;
+      border:1px solid #e8eaed;
+    }
+    .user-ava{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid #dadce0;flex-shrink:0;}
+    .user-ava-ph{width:42px;height:42px;border-radius:50%;background:#6d1a2e;color:white;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .user-name{font-size:14px;font-weight:600;color:#202124;}
+    .user-email{font-size:12px;color:#9aa0a6;}
+
+    .question{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:600;color:#202124;text-align:center;margin-bottom:20px;}
+
+    .roles-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+    .role-card{
+      border:2px solid #e8eaed;border-radius:16px;padding:20px 14px;
+      text-align:center;cursor:pointer;transition:all .2s;background:#fff;
+      display:flex;flex-direction:column;align-items:center;gap:10px;
+    }
+    .role-card:hover{border-color:#6d1a2e;background:#fdf5f7;transform:translateY(-2px);box-shadow:0 8px 24px rgba(109,26,46,0.15);}
+    .role-card.selected{border-color:#6d1a2e;background:linear-gradient(135deg,#fdf5f7,#fff3f5);box-shadow:0 4px 20px rgba(109,26,46,0.2);}
+    .role-icon{font-size:36px;line-height:1;}
+    .role-label{font-family:'Google Sans',sans-serif;font-size:15px;font-weight:600;color:#202124;}
+    .role-desc{font-size:11px;color:#5f6368;line-height:1.4;}
+
+    /* Sección contraseña docente */
+    #docente-section{display:none;animation:fadeIn .25s ease;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .label{display:block;font-size:11px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+    .input-wrap{position:relative;margin-bottom:8px;}
+    .input-wrap input{width:100%;padding:13px 46px 13px 15px;border:2px solid #e0e0e0;border-radius:12px;font-size:15px;font-family:inherit;color:#202124;background:#fafafa;letter-spacing:1.5px;transition:border-color .2s,box-shadow .2s;}
+    .input-wrap input:focus{outline:none;border-color:#6d1a2e;box-shadow:0 0 0 3px rgba(109,26,46,.12);background:#fff;}
+    .eye-btn{position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#999;padding:4px;transition:color .2s;}
+    .eye-btn:hover{color:#6d1a2e;}
+
+    .error-box{background:#fce8e6;border:1px solid #f5c6c4;border-radius:10px;padding:10px 14px;font-size:13px;color:#c62828;display:flex;align-items:center;gap:8px;margin-bottom:16px;animation:shake .3s ease;}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+    /* Alerta estudiante */
+    #estudiante-warning{display:none;animation:fadeIn .3s ease;}
+    .warn-box{
+      background:linear-gradient(135deg,#fff8e1,#fff3cd);
+      border:2px solid #f9ab00;border-radius:16px;
+      padding:20px 18px;text-align:center;
+    }
+    .warn-icon{font-size:40px;margin-bottom:10px;display:block;}
+    .warn-title{font-family:'Google Sans',sans-serif;font-size:16px;font-weight:700;color:#e65100;margin-bottom:8px;}
+    .warn-text{font-size:13.5px;color:#5d4037;line-height:1.6;margin-bottom:16px;}
+    .warn-text strong{color:#bf360c;}
+    .warn-steps{background:rgba(255,255,255,0.7);border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left;}
+    .warn-step{font-size:13px;color:#4e342e;padding:3px 0;display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+    .warn-step-num{background:#f9ab00;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
+
+    .btn-primary{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:12px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 18px rgba(109,26,46,.35);}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 7px 28px rgba(109,26,46,.45);}
+    .btn-primary:disabled{opacity:.65;cursor:not-allowed;transform:none;}
+    .btn-secondary{width:100%;padding:12px;border:1.5px solid #e0e0e0;border-radius:12px;background:transparent;color:#666;font-size:14px;font-family:inherit;cursor:pointer;transition:all .2s;}
+    .btn-secondary:hover{background:#f5f5f5;border-color:#ccc;}
+    .btn-back{width:100%;padding:10px;border:none;border-radius:10px;background:transparent;color:#9aa0a6;font-size:13px;font-family:inherit;cursor:pointer;margin-top:8px;transition:color .2s;}
+    .btn-back:hover{color:#6d1a2e;}
+
+    .spinner{display:inline-block;width:15px;height:15px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:7px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="logo-wrap">
+    <div class="logo-img-wrap">
+      <img src="/img/logo-ifd.png" alt="IFD" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <span class="fb" style="display:none">🎓</span>
+    </div>
+    <h1>IFD Meet</h1>
+    <p class="sub">Instituto de Formación Docente · Santa Rosa, Misiones</p>
+  </div>
+
+  <!-- USUARIO LOGUEADO -->
+  <div class="user-row">
+    <% if (user && user.photo) { %>
+      <img class="user-ava" src="<%= user.photo %>" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+      <div class="user-ava-ph" style="display:none"><%= user.name ? user.name[0].toUpperCase() : '?' %></div>
+    <% } else { %>
+      <div class="user-ava-ph"><%= user && user.name ? user.name[0].toUpperCase() : '?' %></div>
+    <% } %>
+    <div>
+      <div class="user-name"><%= user ? user.name : '' %></div>
+      <div class="user-email"><%= user ? user.email : '' %></div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <% if (error) { %>
+    <div class="error-box">🔒 <%= error %></div>
+  <% } %>
+
+  <!-- SELECCIÓN DE ROL (pantalla principal) -->
+  <div id="rol-section">
+    <p class="question">¿Sos docente o estudiante?</p>
+
+    <div class="roles-grid">
+      <div class="role-card" id="card-docente" onclick="seleccionarRol('docente')">
+        <span class="role-icon">👨‍🏫</span>
+        <span class="role-label">Soy Docente</span>
+        <span class="role-desc">Accedo con contraseña institucional</span>
+      </div>
+      <div class="role-card" id="card-estudiante" onclick="seleccionarRol('estudiante')">
+        <span class="role-icon">🎒</span>
+        <span class="role-label">Soy Estudiante</span>
+        <span class="role-desc">Entro como invitado con link</span>
+      </div>
+    </div>
+
+    <!-- Sección contraseña docente -->
+    <div id="docente-section">
+      <label class="label" for="pw">Contraseña institucional</label>
+      <div class="input-wrap">
+        <input type="password" id="pw" name="password" placeholder="Ingresá la contraseña del IFD" autocomplete="current-password"/>
+        <button type="button" class="eye-btn" onclick="toggleEye()">👁️</button>
+      </div>
+      <p style="font-size:12px;color:#9aa0a6;margin-bottom:16px;">Solo para docentes habilitados del IFD Santa Rosa</p>
+      <button class="btn-primary" id="btn-verificar" onclick="verificarDocente()">
+        Verificar y entrar
+      </button>
+      <button class="btn-back" onclick="volverRoles()">← Volver a elegir</button>
+    </div>
+
+    <!-- Advertencia estudiante -->
+    <div id="estudiante-warning">
+      <div class="warn-box">
+        <span class="warn-icon">⚠️</span>
+        <div class="warn-title">Solo los docentes pueden iniciar sesión en IFD Meet</div>
+        <p class="warn-text">
+          Los estudiantes <strong>no necesitan iniciar sesión</strong> para unirse a una reunión.<br>
+          Solo podés ingresar si tenés el enlace de invitación que te compartió tu docente.
+        </p>
+        <div class="warn-steps">
+          <div class="warn-step">
+            <span class="warn-step-num">1</span>
+            <span>Pedile el enlace de la reunión a tu docente</span>
+          </div>
+          <div class="warn-step">
+            <span class="warn-step-num">2</span>
+            <span>Hacé clic en el enlace o pegalo en el inicio de IFD Meet</span>
+          </div>
+          <div class="warn-step">
+            <span class="warn-step-num">3</span>
+            <span>Escribí tu nombre y solicitá entrar</span>
+          </div>
+        </div>
+        <button class="btn-secondary" onclick="window.location.href='/'">Ir al inicio →</button>
+      </div>
+      <button class="btn-back" onclick="volverRoles()">← Volver</button>
+    </div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #f1f3f4;text-align:center;">
+      <a href="/logout" style="font-size:13px;color:#9aa0a6;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#c62828'" onmouseout="this.style.color='#9aa0a6'">Usar otra cuenta de Google</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let rolActual = null;
+
+  function seleccionarRol(rol) {
+    rolActual = rol;
+
+    document.getElementById('card-docente').classList.toggle('selected', rol === 'docente');
+    document.getElementById('card-estudiante').classList.toggle('selected', rol === 'estudiante');
+
+    if (rol === 'docente') {
+      document.getElementById('docente-section').style.display = 'block';
+      document.getElementById('estudiante-warning').style.display = 'none';
+      setTimeout(() => document.getElementById('pw').focus(), 100);
+    } else {
+      document.getElementById('docente-section').style.display = 'none';
+      document.getElementById('estudiante-warning').style.display = 'block';
+    }
+  }
+
+  function volverRoles() {
+    document.getElementById('card-docente').classList.remove('selected');
+    document.getElementById('card-estudiante').classList.remove('selected');
+    document.getElementById('docente-section').style.display = 'none';
+    document.getElementById('estudiante-warning').style.display = 'none';
+    rolActual = null;
+  }
+
+  function toggleEye() {
+    const inp = document.getElementById('pw');
+    const btn = document.querySelector('.eye-btn');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
+  }
+
+  async function verificarDocente() {
+    const pw = document.getElementById('pw').value.trim();
+    if (!pw) { document.getElementById('pw').focus(); return; }
+
+    const btn = document.getElementById('btn-verificar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verificando...';
+
+    try {
+      const r = await fetch('/api/verificar-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      });
+      const data = await r.json();
+      if (data.ok) {
+        btn.innerHTML = '✅ Verificado - Entrando...';
+        window.location.href = '/';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = 'Verificar y entrar';
+        showError('Contraseña incorrecta. Intentá de nuevo.');
+        document.getElementById('pw').value = '';
+        document.getElementById('pw').focus();
+      }
+    } catch(e) {
+      btn.disabled = false;
+      btn.innerHTML = 'Verificar y entrar';
+      showError('Error de conexión. Intentá de nuevo.');
+    }
+  }
+
+  function showError(msg) {
+    const existing = document.querySelector('.error-box');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.className = 'error-box';
+    div.innerHTML = '🔒 ' + msg;
+    document.getElementById('docente-section').insertBefore(div, document.getElementById('docente-section').firstChild);
+    setTimeout(() => div.remove(), 4000);
+  }
+
+  document.getElementById('pw')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') verificarDocente();
+  });
+
+  <% if (typeof estudianteWarning !== 'undefined' && estudianteWarning) { %>
+    window.addEventListener('load', () => seleccionarRol('estudiante'));
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    window.addEventListener('load', () => seleccionarRol('docente'));
+  <% } %>
+</script>
+</body>
+</html>
