@@ -1275,324 +1275,42 @@ body {
 }
 
 @media (max-width: 768px) {
-  /* ── HEADER MÓVIL ── */
   .room-header {
-    padding: 0 10px;
-    height: 52px;
+    padding: 0 12px;
+    height: 56px;
   }
-
+  
   .room-name {
-    font-size: 15px;
-    max-width: 120px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 16px;
   }
-
-  /* Ocultar elementos secundarios del header en móvil */
-  .time-display,
-  .code-display {
-    display: none;
-  }
-
-  .room-info {
-    gap: 6px;
-  }
-
-  .icon-btn {
-    padding: 8px;
-  }
-
-  /* ── LAYOUT PRINCIPAL ── */
-  .room-main {
-    flex-direction: column;
-  }
-
-  /* ── GRID DE VIDEOS MÓVIL ── */
+  
   .videos-grid {
-    padding: 6px;
-    gap: 6px;
-    /* En móvil: siempre 1 columna o 2 columnas máximo */
-    align-content: start;
-    overflow-y: auto;
-  }
-
-  /* Override todos los layouts dinámicos para móvil */
-  .videos-grid:has(.video-container:nth-child(1)),
-  .videos-grid:has(.video-container:nth-child(2)),
-  .videos-grid:has(.video-container:nth-child(3)),
-  .videos-grid:has(.video-container:nth-child(4)),
-  .videos-grid:has(.video-container:nth-child(5)),
-  .videos-grid:has(.video-container:nth-child(6)),
-  .videos-grid:has(.video-container:nth-child(n+7)) {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  /* Con 1 solo participante: pantalla completa */
-  .videos-grid:has(.video-container:nth-child(1)):not(:has(.video-container:nth-child(2))) {
-    grid-template-columns: 1fr;
-  }
-
-  .video-container {
-    border-radius: 10px;
-    aspect-ratio: 4/3; /* Más cuadrado en móvil → más cara visible */
-  }
-
-  /* Overlay siempre visible en móvil (no hay hover) */
-  .video-overlay {
-    opacity: 1;
-    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 60%);
     padding: 8px;
-    border-radius: 0 0 10px 10px;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    gap: 8px;
   }
-
-  .video-name {
-    font-size: 12px;
+  
+  .video-container {
+    border-radius: 12px;
   }
-
-  .video-avatar {
-    width: 24px;
-    height: 24px;
-    font-size: 11px;
-  }
-
-  /* Acciones sobre video: siempre visibles en móvil */
-  .video-actions {
-    opacity: 1;
-    top: 6px;
-    right: 6px;
-  }
-
-  .video-action-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-  }
-
-  /* Placeholder camara apagada en móvil */
-  .cam-avatar-large {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
-  }
-
-  .cam-off-text {
-    font-size: 13px;
-  }
-
-  /* ── MODO SPOTLIGHT EN MÓVIL (pantalla compartida) ── */
-  /* Video principal arriba, thumbnails abajo en tira horizontal */
-  .videos-grid.spotlight-layout {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100%;
-    gap: 6px;
-  }
-
-  .videos-grid.spotlight-layout .video-container.spotlight {
-    flex: 1;
-    aspect-ratio: unset;
-    min-height: 0;
-    border-radius: 10px;
-  }
-
-  .videos-grid.spotlight-layout .thumbnails-strip {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    flex-shrink: 0;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .videos-grid.spotlight-layout .thumbnails-strip::-webkit-scrollbar {
-    display: none;
-  }
-
-  .videos-grid.spotlight-layout .video-container:not(.spotlight) {
-    width: 100px;
-    flex-shrink: 0;
-    aspect-ratio: 4/3;
-    border-radius: 10px;
-  }
-
-  /* ── PANEL LATERAL → FULLSCREEN EN MÓVIL ── */
-  .side-panel {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    transform: translateX(100%);
-    z-index: 500;
-    border-left: none;
-  }
-
-  .side-panel.active {
-    transform: translateX(0);
-  }
-
-  /* Header del panel en fullscreen: más espacio para cerrar */
-  .panel-header {
-    padding: 20px 16px 16px;
-    padding-top: calc(20px + env(safe-area-inset-top));
-  }
-
-  .panel-close {
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.1);
-  }
-
-  /* ── BARRA DE CONTROLES MÓVIL ── */
+  
   .controls-bar {
-    height: auto;
-    min-height: 68px;
-    padding: 8px 6px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    gap: 0;
-    /* Los tres grupos alineados */
-    justify-content: center;
+    height: 72px;
+    padding: 0 12px;
   }
-
-  .controls-left,
-  .controls-right {
-    display: none; /* Ocultar grupos laterales que no caben */
-  }
-
-  .controls-center {
-    gap: 5px;
-    flex-wrap: nowrap;
-    justify-content: center;
-    width: 100%;
-  }
-
+  
   .control-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px; /* Más cuadrado para touch */
-    min-width: 44px; /* Mínimo accesible */
+    width: 48px;
+    height: 48px;
   }
-
-  /* Ocultar labels → solo iconos en móvil */
+  
   .control-label {
     display: none;
   }
-
-  /* Separadores entre grupos de controles: ocultar */
-  .controls-separator {
-    display: none;
-  }
-
-  /* ── PANEL DE ESPERA (HOST) ── */
+  
   .waiting-panel {
-    position: fixed;
-    bottom: 80px;
-    top: auto;
-    right: 0;
-    left: 0;
-    width: 100%;
-    border-radius: 20px 20px 0 0;
-    max-height: 60vh;
-  }
-
-  /* ── PANEL REQUESTS MÓVIL ── */
-  #req-panel {
-    top: auto;
-    bottom: 80px;
-    right: 0;
-    left: 0;
-    width: 100%;
-  }
-
-  /* ── REACCIONES FLOTANTES ── */
-  .reactions-menu {
-    bottom: 76px;
-    flex-wrap: wrap;
-    width: calc(100% - 32px);
-    left: 16px;
-    right: 16px;
-    transform: none;
-    justify-content: center;
-  }
-
-  /* ── PANTALLA DE ESPERA ── */
-  .waiting-card {
-    padding: 32px 24px;
-    border-radius: 20px;
-    margin: 16px;
-    max-width: 100%;
-  }
-
-  /* ── SCROLLBAR OCULTO EN MÓVIL ── */
-  .chat-messages,
-  .participants-list {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ── INPUT CHAT MÓVIL ── */
-  .chat-textarea {
-    font-size: 16px; /* Evita zoom en iOS al hacer focus */
-  }
-
-  /* ── CARD DE EXPULSIÓN ── */
-  .dismissed-card {
-    padding: 28px 20px;
-    border-radius: 16px;
-    margin: 16px;
-  }
-}
-
-/* ── MÓVIL MUY PEQUEÑO (≤480px): ajustes extra ── */
-@media (max-width: 480px) {
-  .room-header {
-    height: 48px;
-  }
-
-  .room-name {
-    max-width: 90px;
-    font-size: 14px;
-  }
-
-  .control-btn {
-    width: 46px;
-    height: 46px;
-  }
-
-  .controls-center {
-    gap: 3px;
-  }
-}
-
-/* ── ORIENTACIÓN LANDSCAPE EN MÓVIL ── */
-@media (max-width: 900px) and (orientation: landscape) {
-  .room-header {
-    height: 44px;
-  }
-
-  .controls-bar {
-    height: 56px;
-    min-height: 56px;
-  }
-
-  .control-btn {
-    width: 44px;
-    height: 44px;
-  }
-
-  /* En landscape: 2-3 columnas aprovechan el ancho */
-  .videos-grid:has(.video-container:nth-child(3)),
-  .videos-grid:has(.video-container:nth-child(4)) {
-    grid-template-columns: repeat(3, 1fr);
+    width: calc(100% - 40px);
+    right: 20px;
+    left: 20px;
   }
 }
 
