@@ -116,80 +116,80 @@
     .ep-btn{font-size:26px;cursor:pointer;padding:6px;border-radius:10px;border:none;background:transparent;transition:transform .15s,background .15s;line-height:1}
     .ep-btn:hover{transform:scale(1.3);background:rgba(255,255,255,.1)}
 
-    /* ══════════ MIROTALK IFRAME INTEGRADO ══════════ */
-    #miro-overlay{
+    /* ══════════ PLUGNMEET IFRAME INTEGRADO ══════════ */
+    #pnm-overlay{
       position:fixed;inset:0;z-index:99999;
       background:#000;
       display:none;flex-direction:column;
     }
-    #miro-overlay.show{display:flex}
-    #miro-topbar{
+    #pnm-overlay.show{display:flex}
+    #pnm-topbar{
       height:52px;background:linear-gradient(135deg,#6d1a2e,#a02040);
       display:flex;align-items:center;justify-content:space-between;
       padding:0 20px;flex-shrink:0;
     }
-    #miro-topbar-left{display:flex;align-items:center;gap:12px;color:#fff}
-    #miro-topbar-left span{font-size:15px;font-weight:600;font-family:'Google Sans',sans-serif}
-    #miro-topbar-right{display:flex;gap:10px}
-    .miro-tb-btn{
+    #pnm-topbar-left{display:flex;align-items:center;gap:12px;color:#fff}
+    #pnm-topbar-left span{font-size:15px;font-weight:600;font-family:'Google Sans',sans-serif}
+    #pnm-topbar-right{display:flex;gap:10px}
+    .pnm-tb-btn{
       padding:8px 18px;border:none;border-radius:20px;
       font-size:13px;font-weight:600;cursor:pointer;
       display:flex;align-items:center;gap:6px;transition:.15s;
     }
-    .miro-tb-volver{background:rgba(255,255,255,.15);color:#fff;}
-    .miro-tb-volver:hover{background:rgba(255,255,255,.28)}
-    .miro-tb-salir{background:#fff;color:#6d1a2e;}
-    .miro-tb-salir:hover{background:#f5e6e8}
-    #miro-iframe{flex:1;border:none;width:100%;height:100%}
+    .pnm-tb-volver{background:rgba(255,255,255,.15);color:#fff;}
+    .pnm-tb-volver:hover{background:rgba(255,255,255,.28)}
+    .pnm-tb-salir{background:#fff;color:#6d1a2e;}
+    .pnm-tb-salir:hover{background:#f5e6e8}
+    #pnm-iframe{flex:1;border:none;width:100%;height:100%}
 
-    /* ══════════ MIROTALK ══════════ */
-    .ljoin-mirotalk{
+    /* ══════════ PLUGNMEET ══════════ */
+    .ljoin-plugnmeet{
       background:linear-gradient(135deg,#6d1a2e,#a02040)!important;
       box-shadow:0 6px 24px rgba(109,26,46,.45)!important;
       font-size:15px!important;gap:10px;
-      animation:mPulse 2.5s ease-in-out infinite;
+      animation:pnmPulse 2.5s ease-in-out infinite;
     }
-    @keyframes mPulse{0%,100%{box-shadow:0 6px 24px rgba(109,26,46,.45)}50%{box-shadow:0 8px 36px rgba(109,26,46,.7),0 0 0 6px rgba(109,26,46,.12)}}
+    @keyframes pnmPulse{0%,100%{box-shadow:0 6px 24px rgba(109,26,46,.45)}50%{box-shadow:0 8px 36px rgba(109,26,46,.7),0 0 0 6px rgba(109,26,46,.12)}}
 
-    #mirotalk-modal{
+    #plugnmeet-modal{
       position:fixed;inset:0;z-index:99999;
       background:rgba(0,0,0,.85);backdrop-filter:blur(12px);
       display:none;align-items:center;justify-content:center;padding:20px;
     }
-    #mirotalk-modal.show{display:flex}
-    .miro-card{
+    #plugnmeet-modal.show{display:flex}
+    .pnm-card{
       background:#fff;border-radius:24px;padding:36px 32px;
       width:100%;max-width:460px;color:#202124;
       box-shadow:0 28px 72px rgba(0,0,0,.6);
       position:relative;overflow:hidden;
       animation:modalIn .4s cubic-bezier(0.16,1,0.3,1);
     }
-    .miro-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#6d1a2e,#a02040,#6d1a2e)}
-    .miro-icon{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;box-shadow:0 10px 28px rgba(109,26,46,.4)}
-    .miro-card h2{font-family:'Google Sans',sans-serif;font-size:22px;font-weight:700;text-align:center;margin-bottom:6px}
-    .miro-desc{font-size:13.5px;color:#5f6368;text-align:center;line-height:1.6;margin-bottom:22px}
-    .miro-features{background:#f8f9fa;border-radius:14px;padding:16px 18px;margin-bottom:22px;display:flex;flex-direction:column;gap:10px}
-    .miro-feat{display:flex;align-items:center;gap:10px;font-size:13.5px;color:#333}
-    .miro-feat-icon{font-size:18px;flex-shrink:0}
-    .miro-room-info{background:#fff3e0;border:1px solid #ffe0b2;border-radius:12px;padding:12px 16px;margin-bottom:22px;font-size:13px;color:#e65100;display:flex;align-items:center;gap:8px}
-    .miro-btn-main{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:10px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(109,26,46,.35);display:flex;align-items:center;justify-content:center;gap:10px}
-    .miro-btn-main:hover{transform:translateY(-1px);box-shadow:0 7px 26px rgba(109,26,46,.45)}
-    .miro-btn-cancel{width:100%;padding:11px;border:1px solid #e0e0e0;border-radius:12px;background:transparent;color:#888;font-size:14px;font-family:inherit;cursor:pointer;transition:background .2s}
-    .miro-btn-cancel:hover{background:#f5f5f5}
+    .pnm-card::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#6d1a2e,#a02040,#6d1a2e)}
+    .pnm-icon{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;box-shadow:0 10px 28px rgba(109,26,46,.4)}
+    .pnm-card h2{font-family:'Google Sans',sans-serif;font-size:22px;font-weight:700;text-align:center;margin-bottom:6px}
+    .pnm-desc{font-size:13.5px;color:#5f6368;text-align:center;line-height:1.6;margin-bottom:22px}
+    .pnm-features{background:#f8f9fa;border-radius:14px;padding:16px 18px;margin-bottom:22px;display:flex;flex-direction:column;gap:10px}
+    .pnm-feat{display:flex;align-items:center;gap:10px;font-size:13.5px;color:#333}
+    .pnm-feat-icon{font-size:18px;flex-shrink:0}
+    .pnm-room-info{background:#fff3e0;border:1px solid #ffe0b2;border-radius:12px;padding:12px 16px;margin-bottom:22px;font-size:13px;color:#e65100;display:flex;align-items:center;gap:8px}
+    .pnm-btn-main{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#6d1a2e,#a02040);color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:10px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(109,26,46,.35);display:flex;align-items:center;justify-content:center;gap:10px}
+    .pnm-btn-main:hover{transform:translateY(-1px);box-shadow:0 7px 26px rgba(109,26,46,.45)}
+    .pnm-btn-cancel{width:100%;padding:11px;border:1px solid #e0e0e0;border-radius:12px;background:transparent;color:#888;font-size:14px;font-family:inherit;cursor:pointer;transition:background .2s}
+    .pnm-btn-cancel:hover{background:#f5f5f5}
 
-    #mirotalk-frame-modal{
+    #plugnmeet-frame-modal{
       position:fixed;inset:0;z-index:99998;
       background:#000;
       display:none;flex-direction:column;
     }
-    #mirotalk-frame-modal.show{display:flex}
-    .mf-header{height:48px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
-    .mf-title{color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
-    .mf-close{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
-    .mf-close:hover{background:rgba(255,255,255,.35)}
-    #mirotalk-iframe{flex:1;border:none;width:100%}
+    #plugnmeet-frame-modal.show{display:flex}
+    .pnm-header{height:48px;background:linear-gradient(135deg,#6d1a2e,#a02040);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+    .pnm-title{color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+    .pnm-close{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+    .pnm-close:hover{background:rgba(255,255,255,.35)}
+    #plugnmeet-iframe{flex:1;border:none;width:100%}
 
-    /* ══════════ FIN MIROTALK ══════════ */
+    /* ══════════ FIN PLUGNMEET ══════════ */
     #rec-ind{display:none;align-items:center;gap:6px;background:rgba(234,67,53,.15);border:1px solid rgba(234,67,53,.4);border-radius:20px;padding:5px 12px;font-size:12px;color:#ea4335}
     #rec-ind.show{display:flex}
     .rdot{width:7px;height:7px;background:#ea4335;border-radius:50%;animation:rpulse 1s infinite}
@@ -749,69 +749,69 @@
 </div>
 
 <!-- ══════════════════════════════════════════
-     MODAL MIROTALK - CONFIRMACIÓN
+     MODAL PLUGNMEET - CONFIRMACIÓN
 ══════════════════════════════════════════ -->
-<div id="mirotalk-modal">
-  <div class="miro-card">
-    <div class="miro-icon">🎥</div>
-    <h2>Videollamada con MiroTalk</h2>
-    <p class="miro-desc">
-      MiroTalk abre una sala de video HD de alta calidad.<br>
+<div id="plugnmeet-modal">
+  <div class="pnm-card">
+    <div class="pnm-icon">🎥</div>
+    <h2>Videollamada con PlugNMeet</h2>
+    <p class="pnm-desc">
+      PlugNMeet abre una sala de video HD de alta calidad.<br>
       Tu chat, archivos y participantes siguen en IFD Meet.
     </p>
-    <div class="miro-features">
-      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Video y audio HD en tiempo real</div>
-      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Compartir pantalla</div>
-      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Sin límite de participantes</div>
-      <div class="miro-feat"><span class="miro-feat-icon">✅</span> Misma sala que tu reunión IFD</div>
+    <div class="pnm-features">
+      <div class="pnm-feat"><span class="pnm-feat-icon">✅</span> Video y audio HD en tiempo real</div>
+      <div class="pnm-feat"><span class="pnm-feat-icon">✅</span> Compartir pantalla</div>
+      <div class="pnm-feat"><span class="pnm-feat-icon">✅</span> Sin límite de participantes</div>
+      <div class="pnm-feat"><span class="pnm-feat-icon">✅</span> Misma sala que tu reunión IFD</div>
     </div>
-    <div class="miro-room-info">
-      🔗 Sala: <strong id="miro-room-name" style="margin-left:4px"></strong>
+    <div class="pnm-room-info">
+      🔗 Sala: <strong id="pnm-room-name" style="margin-left:4px"></strong>
     </div>
-    <button class="miro-btn-main" onclick="launchMiroTalk()">
+    <button class="pnm-btn-main" onclick="launchPlugNMeet()">
       <span style="font-size:20px">🚀</span>
-      Abrir videollamada MiroTalk
+      Abrir videollamada PlugNMeet
     </button>
-    <button class="miro-btn-cancel" onclick="closeMiroModal()">Cancelar</button>
+    <button class="pnm-btn-cancel" onclick="closePNMModal()">Cancelar</button>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     MODAL IFRAME MIROTALK (vista integrada)
+     MODAL IFRAME PLUGNMEET (vista integrada)
 ══════════════════════════════════════════ -->
-<div id="mirotalk-frame-modal">
-  <div class="mf-header">
-    <div class="mf-title">
-      🎥 MiroTalk &nbsp;·&nbsp; <span id="mf-room-name" style="opacity:.8"></span>
+<div id="plugnmeet-frame-modal">
+  <div class="pnm-header">
+    <div class="pnm-title">
+      🎥 PlugNMeet &nbsp;·&nbsp; <span id="pnm-frame-room-name" style="opacity:.8"></span>
     </div>
-    <button class="mf-close" onclick="closeMiroFrame()">
+    <button class="pnm-close" onclick="closePNMFrame()">
       <span class="material-icons-round" style="font-size:16px">close</span>
       Cerrar video
     </button>
   </div>
-  <iframe id="mirotalk-iframe" allow="camera;microphone;display-capture;fullscreen;clipboard-read;clipboard-write" allowfullscreen></iframe>
+  <iframe id="plugnmeet-iframe" allow="camera;microphone;display-capture;fullscreen;clipboard-read;clipboard-write" allowfullscreen></iframe>
 </div>
 
 <!-- ══════════════════════════════════════════
-     🎥 MIROTALK INTEGRADO — iframe full screen
+     🎥 PLUGNMEET INTEGRADO — iframe full screen
 ══════════════════════════════════════════ -->
-<div id="miro-overlay">
-  <div id="miro-topbar">
-    <div id="miro-topbar-left">
+<div id="pnm-overlay">
+  <div id="pnm-topbar">
+    <div id="pnm-topbar-left">
       <span>🎥</span>
       <span>Videollamada IFD Meet</span>
     </div>
-    <div id="miro-topbar-right">
-      <button class="miro-tb-btn miro-tb-volver" onclick="volverAlSistema()">
+    <div id="pnm-topbar-right">
+      <button class="pnm-tb-btn pnm-tb-volver" onclick="volverAlSistema()">
         ← Volver al sistema
       </button>
-      <button class="miro-tb-btn miro-tb-salir" onclick="cerrarMiroTalk()">
+      <button class="pnm-tb-btn pnm-tb-salir" onclick="cerrarPlugNMeet()">
         ✖ Finalizar llamada
       </button>
     </div>
   </div>
   <iframe
-    id="miro-iframe"
+    id="pnm-iframe"
     allow="camera;microphone;display-capture;fullscreen;clipboard-read;clipboard-write;autoplay"
     allowfullscreen
     src=""
@@ -2410,27 +2410,27 @@ function renderBreakouts() {
 }
 
 // ══════════════════════════════════════════════
-//  🎥 MIROTALK — IFRAME INTEGRADO EN TU SISTEMA
+//  🎥 PLUGNMEET — IFRAME INTEGRADO EN TU SISTEMA
 // ══════════════════════════════════════════════
 
-const MIROTALK_URL  = '<%- MIROTALK_URL || "https://mirotalk-ifd.onrender.com" %>';
-const MIROTALK_ROOM = 'IFD-' + ROOM_ID.replace(/-/g,'').slice(0,12).toUpperCase();
+const PLUGNMEET_URL  = '<%- PLUGNMEET_URL || "https://demo.plugnmeet.com" %>';
+const PLUGNMEET_ROOM = 'IFD-' + ROOM_ID.replace(/-/g,'').slice(0,12).toUpperCase();
 
-function getMiroName() {
+function getPNMName() {
   return encodeURIComponent(myName || (SRV_USER && SRV_USER.name) || 'Participante');
 }
 
-function buildMiroUrl() {
-  return MIROTALK_URL + '/join?room=' + MIROTALK_ROOM
-    + '&name=' + getMiroName()
-    + '&audio=1&video=1&notify=0';
+function buildPNMUrl() {
+  return PLUGNMEET_URL + '/login?room_id=' + PLUGNMEET_ROOM
+    + '&name=' + getPNMName()
+    + '&is_admin=false';
 }
 
-// Abre MiroTalk como iframe dentro de tu sistema
-function abrirMiroTalk() {
-  const url = buildMiroUrl();
-  const overlay = document.getElementById('miro-overlay');
-  const iframe  = document.getElementById('miro-iframe');
+// Abre PlugNMeet como iframe dentro de tu sistema
+function abrirPlugNMeet() {
+  const url = buildPNMUrl();
+  const overlay = document.getElementById('pnm-overlay');
+  const iframe  = document.getElementById('pnm-iframe');
   iframe.src = url;
   overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -2438,7 +2438,7 @@ function abrirMiroTalk() {
 
 // Volver al sistema (el iframe sigue corriendo, no corta la llamada)
 function volverAlSistema() {
-  document.getElementById('miro-overlay').classList.remove('show');
+  document.getElementById('pnm-overlay').classList.remove('show');
   document.body.style.overflow = '';
   if (document.getElementById('lobby') &&
       document.getElementById('lobby').style.display !== 'none') {
@@ -2447,19 +2447,19 @@ function volverAlSistema() {
 }
 
 // Finalizar llamada completamente
-function cerrarMiroTalk() {
-  document.getElementById('miro-iframe').src = '';
-  document.getElementById('miro-overlay').classList.remove('show');
+function cerrarPlugNMeet() {
+  document.getElementById('pnm-iframe').src = '';
+  document.getElementById('pnm-overlay').classList.remove('show');
   document.body.style.overflow = '';
 }
 
-// Aliases para botones existentes en el HTML
-function launchMiroTalk()  { abrirMiroTalk(); }
-function openMiroTalk()    { abrirMiroTalk(); }
-function closeMiroModal()  { const m=document.getElementById('mirotalk-modal'); if(m) m.classList.remove('show'); }
-function closeMiroFrame()  { cerrarMiroTalk(); }
+// Aliases para botones
+function launchPlugNMeet() { abrirPlugNMeet(); }
+function openPlugNMeet()   { abrirPlugNMeet(); }
+function closePNMModal()   { const m=document.getElementById('plugnmeet-modal'); if(m) m.classList.remove('show'); }
+function closePNMFrame()   { cerrarPlugNMeet(); }
 
-function notifyMiroTalkOpened() {
+function notifyPlugNMeetOpened() {
   if (typeof socket !== 'undefined' && ROOM_ID) {
     try {
       socket.emit('send-message', {
@@ -2482,7 +2482,7 @@ if (typeof ResizeObserver !== 'undefined') {
   });
   const va = document.getElementById('video-area');
   if (va) gridResizeObs.observe(va);
-} 
+}
 </script>
 </body>
 </html>

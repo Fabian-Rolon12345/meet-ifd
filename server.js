@@ -20,7 +20,7 @@ const APP_URL    = process.env.APP_URL || `http://localhost:${PORT}`;
 const NODE_ENV   = process.env.NODE_ENV || "development";
 const IFD_PASS   = process.env.IFD_PASSWORD || "IFD12345SANTAROSAMISIONES";
 const ADMIN_PASS = process.env.ADMIN_PASS || "ifd2024";
-const MIROTALK_URL = process.env.MIROTALK_URL || "https://p2p.mirotalk.com";
+const PLUGNMEET_URL = process.env.PLUGNMEET_URL || "https://demo.plugnmeet.com";
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -258,7 +258,7 @@ app.get("/sala/:room", (req, res) => {
     userRole: req.session?.userRole || null,
     isCreator: isCreator,
     APP_URL,
-    MIROTALK_URL
+    PLUGNMEET_URL
   });
 });
 

@@ -71,7 +71,7 @@ PORT=3000
 NODE_ENV=development
 APP_URL=http://localhost:3000
 ADMIN_PASS=ifd2024
-MIROTALK_URL=https://mirotalk-ifd.onrender.com
+PLUGNMEET_URL=https://demo.plugnmeet.com
 ```
 
 ---
