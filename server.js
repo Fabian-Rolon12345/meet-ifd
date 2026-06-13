@@ -1,41 +1,58 @@
 require('dotenv').config();
-const express = require("express");
-const session = require("express-session");
-const passport = require("passport");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const express = require('express');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const mediasoup = require('mediasoup');
+const http = require('http');
+const socketIO = require('socket.io');
+const { v4: uuidV4 } = require('uuid');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
+// ═══════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════
+const PORT = process.env.PORT || 3000;
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const IFD_PASS = process.env.IFD_PASSWORD || 'IFD12345SANTAROSAMISIONES';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'ifd2024';
+
+// MediaSoup Config
+const MEDIASOUP_IP = process.env.MEDIASOUP_LISTEN_IP || '0.0.0.0';
+const MEDIASOUP_ANNOUNCED_IP = process.env.MEDIASOUP_ANNOUNCED_IP || 'localhost';
+const MEDIASOUP_MIN_PORT = parseInt(process.env.MEDIASOUP_MIN_PORT || '40000');
+const MEDIASOUP_MAX_PORT = parseInt(process.env.MEDIASOUP_MAX_PORT || '49999');
+
+// ═══════════════════════════════════════════
+// EXPRESS & SERVER
+// ═══════════════════════════════════════════
 const app = express();
-const server = require("http").createServer(app);
-const io = require("socket.io")(server, {
+const server = http.createServer(app);
+const io = socketIO(server, {
   maxHttpBufferSize: 1e8,
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: { origin: '*', methods: ['GET', 'POST'] }
 });
-const { ExpressPeerServer } = require("peer");
-const { v4: uuidV4 } = require("uuid");
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
 
-const PORT       = process.env.PORT || 3000;
-const APP_URL    = process.env.APP_URL || `http://localhost:${PORT}`;
-const NODE_ENV   = process.env.NODE_ENV || "development";
-const IFD_PASS   = process.env.IFD_PASSWORD || "IFD12345SANTAROSAMISIONES";
-const ADMIN_PASS = process.env.ADMIN_PASS || "ifd2024";
-const PLUGNMEET_URL = process.env.PLUGNMEET_URL || "https://demo.plugnmeet.com";
-
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-app.use(express.static(path.join(__dirname, "public"), { maxAge: '1d' }));
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.set('trust proxy', 1);
 
+// ═══════════════════════════════════════════
+// SESSION & AUTH
+// ═══════════════════════════════════════════
 app.use(session({
-  secret: process.env.SESSION_SECRET || "ifd_meet_secret_2024_xyz",
+  secret: process.env.SESSION_SECRET || 'ifd_meet_secret_2024_xyz',
   resave: true,
   saveUninitialized: true,
   cookie: {
-    secure: NODE_ENV === "production",
-    sameSite: NODE_ENV === "production" ? "none" : "lax",
+    secure: NODE_ENV === 'production',
+    sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
@@ -53,8 +70,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     cb(null, {
       id: profile.id,
       name: profile.displayName,
-      email: profile.emails?.[0]?.value || "",
-      photo: profile.photos?.[0]?.value || ""
+      email: profile.emails?.[0]?.value || '',
+      photo: profile.photos?.[0]?.value || ''
     });
   }));
 }
@@ -62,6 +79,107 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 passport.serializeUser((user, cb) => cb(null, user));
 passport.deserializeUser((user, cb) => cb(null, user));
 
+// ═══════════════════════════════════════════
+// MEDIASOUP SETUP
+// ═══════════════════════════════════════════
+let mediasoupWorker;
+const rooms = new Map();
+const peers = new Map();
+
+async function startMediasoup() {
+  mediasoupWorker = await mediasoup.createWorker({
+    logLevel: 'warn',
+    logTags: ['info', 'ice', 'dlts', 'rtp', 'srtp', 'rtcp'],
+    rtcMinPort: MEDIASOUP_MIN_PORT,
+    rtcMaxPort: MEDIASOUP_MAX_PORT,
+  });
+
+  console.log(`✅ MediaSoup Worker creado (PID: ${mediasoupWorker.pid})`);
+
+  mediasoupWorker.on('died', () => {
+    console.error('❌ MediaSoup Worker murió. Reiniciando...');
+    process.exit(1);
+  });
+}
+
+async function createRoom(roomId) {
+  if (rooms.has(roomId)) return rooms.get(roomId);
+
+  const router = await mediasoupWorker.createRouter({
+    mediaCodecs: [
+      {
+        kind: 'audio',
+        mimeType: 'audio/opus',
+        clockRate: 48000,
+        channels: 2
+      },
+      {
+        kind: 'video',
+        mimeType: 'video/VP9',
+        clockRate: 90000,
+        parameters: {
+          'profile-id': 2
+        }
+      },
+      {
+        kind: 'video',
+        mimeType: 'video/H264',
+        clockRate: 90000,
+        parameters: {
+          'packetization-mode': 1,
+          'profile-level-id': '4d0032',
+          'level-asymmetry-allowed': 1
+        }
+      }
+    ]
+  });
+
+  const room = {
+    id: roomId,
+    router,
+    peers: new Map(),
+    screenShare: null,
+    createdAt: Date.now()
+  };
+
+  rooms.set(roomId, room);
+  console.log(`✅ Sala creada: ${roomId}`);
+
+  // Limpiar sala si queda vacía después de 10 min
+  setTimeout(() => {
+    if (room.peers.size === 0) {
+      rooms.delete(roomId);
+      console.log(`🗑️ Sala eliminada: ${roomId}`);
+    }
+  }, 10 * 60 * 1000);
+
+  return room;
+}
+
+// ═══════════════════════════════════════════
+// DIRECTORIOS
+// ═══════════════════════════════════════════
+['public/uploads', 'public/img', 'public/recordings', 'public/js'].forEach(d => {
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+});
+
+// ═══════════════════════════════════════════
+// MULTER (FILE UPLOAD)
+// ═══════════════════════════════════════════
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'public/uploads/'),
+    filename: (req, file, cb) => {
+      const safe = file.originalname.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+      cb(null, Date.now() + '-' + safe);
+    }
+  }),
+  limits: { fileSize: 100 * 1024 * 1024 }
+});
+
+// ═══════════════════════════════════════════
+// AUTH ROUTES
+// ═══════════════════════════════════════════
 function isIFDVerified(req) { return req.session?.ifdVerified === true; }
 function isDocente(req) { return req.session?.userRole === 'docente' && isIFDVerified(req); }
 
@@ -113,36 +231,10 @@ app.post('/elegir-rol', (req, res) => {
   res.redirect('/elegir-rol');
 });
 
-app.get('/verificar-ifd', (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect('/');
-  if (isIFDVerified(req)) return res.redirect('/');
-  res.redirect('/elegir-rol');
-});
-
-app.post('/verificar-ifd', (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect('/');
-  if ((req.body.password || '').trim() === IFD_PASS) {
-    req.session.ifdVerified = true;
-    req.session.userRole = 'docente';
-    req.session.save(() => res.redirect('/'));
-  } else {
-    res.redirect('/elegir-rol?error=1');
-  }
-});
-
 app.get('/logout', (req, res, next) => {
   req.logout(err => {
     if (err) return next(err);
     req.session.destroy(() => { res.clearCookie('connect.sid'); res.redirect('/'); });
-  });
-});
-
-app.get('/api/ifd-status', (req, res) => {
-  res.json({
-    authenticated: req.isAuthenticated(),
-    ifdVerified: isIFDVerified(req),
-    userRole: req.session?.userRole || null,
-    user: req.isAuthenticated() ? { name: req.user.name, email: req.user.email, photo: req.user.photo } : null
   });
 });
 
@@ -156,78 +248,53 @@ app.post('/api/verificar-password', (req, res) => {
   }
 });
 
-app.use("/peerjs", ExpressPeerServer(server, {
-  debug: false, path: "/", proxied: true, allow_discovery: false,
-  concurrent_limit: 5000, alive_timeout: 60000, key: 'peerjs'
-}));
-
-["public/uploads","public/img","public/recordings","public/js"].forEach(d => {
-  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+app.get('/api/ifd-status', (req, res) => {
+  res.json({
+    authenticated: req.isAuthenticated(),
+    ifdVerified: isIFDVerified(req),
+    userRole: req.session?.userRole || null,
+    user: req.isAuthenticated() ? { name: req.user.name, email: req.user.email, photo: req.user.photo } : null
+  });
 });
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, "public/uploads/"),
-    filename: (req, file, cb) => {
-      const safe = file.originalname.replace(/\s+/g,"_").replace(/[^a-zA-Z0-9._-]/g,"");
-      cb(null, Date.now() + "-" + safe);
-    }
-  }),
-  limits: { fileSize: 100 * 1024 * 1024 }
+// ═══════════════════════════════════════════
+// API ROUTES
+// ═══════════════════════════════════════════
+app.post('/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'No file' });
+  res.json({
+    ok: true,
+    url: `/uploads/${req.file.filename}`,
+    name: req.file.originalname,
+    size: req.file.size,
+    type: req.file.mimetype,
+    isImage: req.file.mimetype.startsWith('image/')
+  });
 });
 
-const uploadRecording = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, "public/recordings/"),
-    filename: (req, file, cb) => {
-      const d = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
-      cb(null, `IFD-Clase-${d}.webm`);
-    }
-  }),
-  limits: { fileSize: 4 * 1024 * 1024 * 1024 }
-});
-
-const rooms = {}, waitingRooms = {};
-const serverStatus = { maintenance: false, message: "", updatedAt: null };
-
-app.get("/admin", (req, res) => res.render("admin", { status: serverStatus }));
-
-app.post("/admin/status", (req, res) => {
-  if (req.body.password !== ADMIN_PASS) return res.status(403).json({ ok:false, error:"Contraseña incorrecta" });
-  serverStatus.maintenance = req.body.maintenance === "true";
-  serverStatus.message = req.body.message || "";
-  serverStatus.updatedAt = new Date().toISOString();
-  io.emit("server-status", serverStatus);
-  res.json({ ok: true, status: serverStatus });
-});
-
-app.get("/api/status", (req, res) => res.json(serverStatus));
-
-app.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ ok:false, error:"No file" });
-  res.json({ ok:true, url:`/uploads/${req.file.filename}`, name:req.file.originalname,
-    size:req.file.size, type:req.file.mimetype, isImage:req.file.mimetype.startsWith("image/") });
-});
-
-app.post("/upload-recording", uploadRecording.single("recording"), (req, res) => {
-  if (!req.file) return res.status(400).json({ ok:false, error:"No recording" });
-  console.log(`Grabacion: ${req.file.filename} (${(req.file.size/1024/1024).toFixed(1)}MB)`);
-  res.json({ ok:true, filename:req.file.filename, url:`/recordings/${req.file.filename}`, size:req.file.size });
-});
-
-app.get("/api/recordings", (req, res) => {
+app.get('/api/recordings', (req, res) => {
   try {
-    const dir = path.join(__dirname, "public/recordings");
-    const files = fs.readdirSync(dir).filter(f => /\.(webm|mp4)$/.test(f))
-      .map(f => ({ name:f, url:`/recordings/${f}`, size:fs.statSync(path.join(dir,f)).size, date:fs.statSync(path.join(dir,f)).mtime }))
-      .sort((a,b) => new Date(b.date)-new Date(a.date));
-    res.json({ ok:true, recordings:files });
-  } catch(e) { res.json({ ok:true, recordings:[] }); }
+    const dir = path.join(__dirname, 'public/recordings');
+    const files = fs.readdirSync(dir)
+      .filter(f => /\.(webm|mp4)$/.test(f))
+      .map(f => ({
+        name: f,
+        url: `/recordings/${f}`,
+        size: fs.statSync(path.join(dir, f)).size,
+        date: fs.statSync(path.join(dir, f)).mtime
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json({ ok: true, recordings: files });
+  } catch (e) {
+    res.json({ ok: true, recordings: [] });
+  }
 });
 
-app.get("/", (req, res) => {
-  res.render("landing", {
-    status: serverStatus,
+// ═══════════════════════════════════════════
+// PAGES
+// ═══════════════════════════════════════════
+app.get('/', (req, res) => {
+  res.render('landing', {
     user: req.isAuthenticated() ? req.user : null,
     ifdVerified: isIFDVerified(req),
     userRole: req.session?.userRole || null,
@@ -235,7 +302,7 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/nueva", (req, res) => {
+app.get('/nueva', (req, res) => {
   if (!req.isAuthenticated()) return res.redirect('/');
   if (!isIFDVerified(req)) return res.redirect('/elegir-rol');
   if (!isDocente(req)) return res.redirect('/?error=solo_docentes');
@@ -245,216 +312,355 @@ app.get("/nueva", (req, res) => {
   req.session.save(() => res.redirect(`/sala/${newRoomId}`));
 });
 
-app.get("/sala/:room", (req, res) => {
-  if (serverStatus.maintenance && !req.query.bypass) {
-    return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:80px"><h1>En mantenimiento</h1><p>${serverStatus.message||"Volvemos pronto."}</p></body></html>`);
-  }
+app.get('/sala/:roomId', (req, res) => {
+  const { roomId } = req.params;
   const createdRooms = req.session.createdRooms || [];
-  const isCreator = createdRooms.includes(req.params.room);
-  res.render("room", {
-    roomId: req.params.room,
-    user: req.isAuthenticated() ? req.user : null,
+  const isCreator = createdRooms.includes(roomId);
+  
+  res.render('room-mediasoup', {
+    roomId,
+    userName: req.isAuthenticated() ? req.user.name : 'Invitado',
+    userEmail: req.isAuthenticated() ? req.user.email : '',
+    userPhoto: req.isAuthenticated() ? req.user.photo : '',
+    isCreator,
+    isDocente: isDocente(req),
     ifdVerified: isIFDVerified(req),
-    userRole: req.session?.userRole || null,
-    isCreator: isCreator,
     APP_URL,
-    PLUGNMEET_URL
+    MEDIASOUP_ANNOUNCED_IP,
+    MEDIASOUP_MIN_PORT,
+    MEDIASOUP_MAX_PORT
   });
 });
 
-io.on("connection", (socket) => {
+// ═══════════════════════════════════════════
+// SOCKET.IO - MEDIASOUP SIGNALING
+// ═══════════════════════════════════════════
+io.on('connection', async (socket) => {
+  console.log(`📍 Cliente conectado: ${socket.id}`);
 
-  socket.on("join-room", (roomId, userId, userName, userEmail, userPhoto, isCreator) => {
-    if (!waitingRooms[roomId]) waitingRooms[roomId] = [];
-
-    const isReconnectingHost = rooms[roomId]?.hostUserId === userId && userId;
-    const shouldBeHost = isCreator === true || isReconnectingHost;
-
-    if (shouldBeHost) {
-      if (!rooms[roomId]) {
-        rooms[roomId] = { host: socket.id, hostUserId: userId, participants: {}, createdAt: Date.now() };
-      } else {
-        rooms[roomId].host = socket.id;
-        rooms[roomId].hostUserId = userId;
+  socket.on('join-room', async (data, callback) => {
+    const { roomId, userId, userName, userEmail, userPhoto } = data;
+    
+    try {
+      const room = await createRoom(roomId);
+      
+      if (!peers.has(userId)) {
+        peers.set(userId, {
+          socket,
+          id: userId,
+          name: userName,
+          email: userEmail,
+          photo: userPhoto,
+          transports: new Map(),
+          producers: new Map(),
+          consumers: new Map()
+        });
       }
-      rooms[roomId].participants[socket.id] = { userId, userName, userEmail, userPhoto, socketId: socket.id };
+
+      room.peers.set(userId, peers.get(userId));
       socket.join(roomId);
 
-      const waitList = waitingRooms[roomId] || [];
-      socket.emit("joined-room", {
-        asHost: true,
-        participants: Object.values(rooms[roomId].participants),
-        waitingList: waitList,
-        user: { name: userName, email: userEmail, photo: userPhoto }
+      // Enviar RTP capabilities al cliente
+      const rtpCapabilities = room.router.rtpCapabilities;
+      callback({ rtpCapabilities, userId });
+
+      // Notificar a otros
+      socket.to(roomId).emit('user-joined', { userId, userName, userEmail, userPhoto });
+
+      console.log(`✅ ${userName} unido a sala ${roomId}`);
+    } catch (error) {
+      console.error('Error en join-room:', error);
+      callback({ error: error.message });
+    }
+  });
+
+  // WebRTC Transport Creation
+  socket.on('create-send-transport', async (data, callback) => {
+    const { roomId, userId } = data;
+    const room = rooms.get(roomId);
+    if (!room) return callback({ error: 'Room not found' });
+
+    try {
+      const transport = await room.router.createWebRtcTransport({
+        listenIps: [{ ip: MEDIASOUP_IP, announcedIp: MEDIASOUP_ANNOUNCED_IP }],
+        enableUdp: true,
+        enableTcp: true,
+        preferUdp: true,
+        initialAvailableOutgoingBitrate: 1000000,
       });
-      socket.to(roomId).emit("user-connected", userId, userName, userEmail, userPhoto);
 
-      if (waitList.length > 0) {
-        const notifyHost = () => {
-          socket.emit("waiting-list", waitingRooms[roomId] || []);
-          (waitingRooms[roomId] || []).forEach(u => {
-            socket.emit("user-waiting", { ...u, totalWaiting: (waitingRooms[roomId] || []).length });
-          });
-        };
-        setTimeout(notifyHost, 800);
-        setTimeout(notifyHost, 2500);
-      }
-      return;
+      const peer = peers.get(userId);
+      if (peer) peer.transports.set('send', transport);
+
+      callback({
+        transportOptions: {
+          id: transport.id,
+          iceParameters: transport.iceParameters,
+          iceCandidates: transport.iceCandidates,
+          dtlsParameters: transport.dtlsParameters,
+        }
+      });
+
+      // Manejar desconexión del transport
+      transport.on('dtlsstatechange', state => {
+        if (state === 'failed' || state === 'closed') {
+          console.log(`🔴 Transport DTLS ${state}`);
+          transport.close();
+        }
+      });
+    } catch (error) {
+      console.error('Error creating send transport:', error);
+      callback({ error: error.message });
     }
-
-    if (!rooms[roomId]) {
-      rooms[roomId] = { host: null, hostUserId: null, participants: {}, createdAt: Date.now() };
-    }
-
-    socket.join(roomId);
-    const waitData = { socketId: socket.id, userId, userName, userEmail, userPhoto, requestedAt: Date.now() };
-    if (!waitingRooms[roomId].find(u => u.socketId === socket.id)) {
-      waitingRooms[roomId].push(waitData);
-    }
-
-    if (rooms[roomId].host) {
-      const hostSocketId = rooms[roomId].host;
-      const notifyData = { ...waitData, totalWaiting: waitingRooms[roomId].length };
-      io.to(hostSocketId).emit("user-waiting", notifyData);
-      setTimeout(() => io.to(hostSocketId).emit("user-waiting", notifyData), 2000);
-      setTimeout(() => io.to(hostSocketId).emit("user-waiting", notifyData), 5000);
-    }
-
-    socket.emit("waiting-approval", { message: "Esperando que el anfitrion te admita...", position: waitingRooms[roomId].length });
   });
 
-  socket.on("peer-ready", ({ roomId, peerId, tempId }) => {
-    const room = rooms[roomId];
-    if (!room) return;
-    const participant = room.participants[socket.id];
-    if (participant) participant.userId = peerId;
-    socket.to(roomId).emit("peer-id-updated", { tempId, peerId,
-      userName: participant?.userName || '',
-      userEmail: participant?.userEmail || '',
-      userPhoto: participant?.userPhoto || ''
+  socket.on('create-recv-transport', async (data, callback) => {
+    const { roomId, userId } = data;
+    const room = rooms.get(roomId);
+    if (!room) return callback({ error: 'Room not found' });
+
+    try {
+      const transport = await room.router.createWebRtcTransport({
+        listenIps: [{ ip: MEDIASOUP_IP, announcedIp: MEDIASOUP_ANNOUNCED_IP }],
+        enableUdp: true,
+        enableTcp: true,
+        preferUdp: true,
+      });
+
+      const peer = peers.get(userId);
+      if (peer) peer.transports.set('recv', transport);
+
+      callback({
+        transportOptions: {
+          id: transport.id,
+          iceParameters: transport.iceParameters,
+          iceCandidates: transport.iceCandidates,
+          dtlsParameters: transport.dtlsParameters,
+        }
+      });
+
+      transport.on('dtlsstatechange', state => {
+        if (state === 'failed' || state === 'closed') {
+          console.log(`🔴 Recv Transport DTLS ${state}`);
+          transport.close();
+        }
+      });
+    } catch (error) {
+      console.error('Error creating recv transport:', error);
+      callback({ error: error.message });
+    }
+  });
+
+  // Connect Transport (DTLS handshake)
+  socket.on('connect-transport', async (data, callback) => {
+    const { userId, transportId, dtlsParameters, direction } = data;
+    const peer = peers.get(userId);
+    
+    try {
+      const transport = direction === 'send' 
+        ? peer?.transports.get('send')
+        : peer?.transports.get('recv');
+
+      if (!transport) return callback({ error: 'Transport not found' });
+
+      await transport.connect({ dtlsParameters });
+      callback({ connected: true });
+    } catch (error) {
+      console.error('Error connecting transport:', error);
+      callback({ error: error.message });
+    }
+  });
+
+  // Produce (enviar cámara/pantalla)
+  socket.on('produce', async (data, callback) => {
+    const { roomId, userId, kind, rtpParameters, appData } = data;
+    const room = rooms.get(roomId);
+    if (!room) return callback({ error: 'Room not found' });
+
+    try {
+      const transport = peers.get(userId)?.transports.get('send');
+      if (!transport) return callback({ error: 'Send transport not found' });
+
+      const producer = await transport.produce({
+        kind,
+        rtpParameters,
+        appData: appData || {}
+      });
+
+      const peer = peers.get(userId);
+      if (peer) peer.producers.set(producer.id, producer);
+
+      // Notificar a todos que hay un nuevo producer
+      io.to(roomId).emit('producer-added', {
+        producerId: producer.id,
+        userId,
+        kind,
+        appData: appData || {}
+      });
+
+      callback({ producerId: producer.id });
+      console.log(`🎥 Producer creado: ${producer.id} (${kind})`);
+    } catch (error) {
+      console.error('Error producing:', error);
+      callback({ error: error.message });
+    }
+  });
+
+  // Consume (recibir video de otro)
+  socket.on('consume', async (data, callback) => {
+    const { roomId, userId, producerId } = data;
+    const room = rooms.get(roomId);
+    if (!room) return callback({ error: 'Room not found' });
+
+    try {
+      const transport = peers.get(userId)?.transports.get('recv');
+      if (!transport) return callback({ error: 'Recv transport not found' });
+
+      // Encontrar el producer
+      let producer;
+      for (const [peerId, peer] of room.peers) {
+        if (peer.producers.has(producerId)) {
+          producer = peer.producers.get(producerId);
+          break;
+        }
+      }
+
+      if (!producer) return callback({ error: 'Producer not found' });
+
+      // Crear consumer
+      const consumer = await transport.consume({
+        producerId,
+        rtpCapabilities: data.rtpCapabilities,
+        paused: true // Empezar pausado
+      });
+
+      const peer = peers.get(userId);
+      if (peer) peer.consumers.set(consumer.id, consumer);
+
+      callback({
+        consumerId: consumer.id,
+        producerId,
+        kind: consumer.kind,
+        rtpParameters: consumer.rtpParameters,
+        appData: producer.appData
+      });
+
+      console.log(`📺 Consumer creado: ${consumer.id}`);
+    } catch (error) {
+      console.error('Error consuming:', error);
+      callback({ error: error.message });
+    }
+  });
+
+  // Resume consumer
+  socket.on('resume-consumer', async (data, callback) => {
+    const { userId, consumerId } = data;
+    const consumer = peers.get(userId)?.consumers.get(consumerId);
+
+    try {
+      if (consumer) await consumer.resume();
+      callback({ resumed: true });
+    } catch (error) {
+      callback({ error: error.message });
+    }
+  });
+
+  // Pause/Resume producer
+  socket.on('pause-producer', async (data) => {
+    const { userId, producerId } = data;
+    const producer = peers.get(userId)?.producers.get(producerId);
+    if (producer) await producer.pause();
+  });
+
+  socket.on('resume-producer', async (data) => {
+    const { userId, producerId } = data;
+    const producer = peers.get(userId)?.producers.get(producerId);
+    if (producer) await producer.resume();
+  });
+
+  // Chat & Files (tu socket.io actual - sin cambios)
+  socket.on('send-message', (data) => {
+    io.to(data.roomId).emit('receive-message', {
+      ...data,
+      time: new Date().toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now()
     });
   });
 
-  socket.on("get-waiting-list", (roomId) => {
-    if (rooms[roomId]?.host === socket.id) socket.emit("waiting-list", waitingRooms[roomId] || []);
-  });
-
-  socket.on("admit-user", (targetSocketId, roomId) => {
-    const room = rooms[roomId];
-    if (!room || room.host !== socket.id) return;
-    const idx = (waitingRooms[roomId] || []).findIndex(u => u.socketId === targetSocketId);
-    if (idx === -1) return;
-    const [user] = waitingRooms[roomId].splice(idx, 1);
-    const ts = io.sockets.sockets.get(targetSocketId);
-    if (ts) {
-      ts.join(roomId);
-      room.participants[targetSocketId] = { userId: user.userId, userName: user.userName, userEmail: user.userEmail, userPhoto: user.userPhoto, socketId: targetSocketId };
-      ts.emit("admitted");
-      ts.emit("joined-room", { asHost: false, user: { name: user.userName, email: user.userEmail, photo: user.userPhoto } });
-      socket.to(roomId).emit("user-connected", user.userId, user.userName, user.userEmail, user.userPhoto);
-    }
-    socket.emit("waiting-list", waitingRooms[roomId]);
-  });
-
-  socket.on("admit-all", (roomId) => {
-    const room = rooms[roomId];
-    if (!room || room.host !== socket.id) return;
-    const waitList = [...(waitingRooms[roomId] || [])];
-    waitingRooms[roomId] = [];
-    waitList.forEach(user => {
-      const ts = io.sockets.sockets.get(user.socketId);
-      if (ts) {
-        ts.join(roomId);
-        room.participants[user.socketId] = { userId: user.userId, userName: user.userName, userEmail: user.userEmail, userPhoto: user.userPhoto, socketId: user.socketId };
-        ts.emit("admitted");
-        ts.emit("joined-room", { asHost: false, user: { name: user.userName, email: user.userEmail, photo: user.userPhoto } });
-        socket.to(roomId).emit("user-connected", user.userId, user.userName, user.userEmail, user.userPhoto);
-      }
+  socket.on('share-file', (data) => {
+    io.to(data.roomId).emit('receive-file', {
+      ...data,
+      time: new Date().toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now()
     });
-    socket.emit("waiting-list", []);
   });
 
-  socket.on("reject-user", (targetSocketId, roomId) => {
-    if (waitingRooms[roomId]) waitingRooms[roomId] = waitingRooms[roomId].filter(u => u.socketId !== targetSocketId);
-    io.to(targetSocketId).emit("rejected", "El anfitrion no admitio tu solicitud.");
-    if (rooms[roomId]?.host === socket.id) socket.emit("waiting-list", waitingRooms[roomId] || []);
-  });
+  // Disconnect
+  socket.on('disconnect', () => {
+    console.log(`👋 Cliente desconectado: ${socket.id}`);
 
-  socket.on("kick-user", (targetId, roomId) => {
-    const room = rooms[roomId];
-    if (!room || room.host !== socket.id) return;
-    // targetId puede ser socketId o peerId - buscar en participants
-    let targetSocketId = targetId;
-    // Si no es un socket directo, buscar por userId (peerId)
-    if (!io.sockets.sockets.get(targetId)) {
-      const found = Object.entries(room.participants).find(([sid, p]) => p.userId === targetId);
-      if (found) targetSocketId = found[0];
-    }
-    io.to(targetSocketId).emit("kicked", "Fuiste expulsado de la reunion.");
-    const ts = io.sockets.sockets.get(targetSocketId);
-    if (ts) { ts.leave(roomId); delete room.participants[targetSocketId]; }
-    // Notificar a TODOS en la sala (incluyendo el host) para quitar el tile
-    io.to(roomId).emit("user-disconnected", targetId);
-  });
+    // Buscar y limpiar el peer
+    for (const [userId, peer] of peers) {
+      if (peer.socket.id === socket.id) {
+        // Cerrar todos los producers
+        for (const [, producer] of peer.producers) {
+          producer.close();
+        }
+        // Cerrar todos los consumers
+        for (const [, consumer] of peer.consumers) {
+          consumer.close();
+        }
+        // Cerrar todos los transports
+        for (const [, transport] of peer.transports) {
+          transport.close();
+        }
 
-  socket.on("raise-hand",        (data) => { io.to(data.roomId).emit("user-raised-hand", { socketId: socket.id, userId: data.userId, userName: data.userName, raised: data.raised }); });
-  socket.on("create-poll",       (data) => { io.to(data.roomId).emit("poll-created", { ...data, pollId: Date.now(), votes: {} }); });
-  socket.on("vote-poll",         (data) => {
-    if (!global.pollVotes) global.pollVotes = {};
-    const key = data.pollId;
-    if (!global.pollVotes[key]) global.pollVotes[key] = {};
-    global.pollVotes[key][data.voterName] = data.optionIndex;
-    const votes = Object.values(global.pollVotes[key]);
-    const total = votes.length;
-    const counts = {};
-    votes.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
-    const maxOpt = Math.max(...Object.keys(counts).map(Number)) + 1;
-    const percentages = Array.from({length: maxOpt}, (_, i) => total ? Math.round((counts[i] || 0) / total * 100) : 0);
-    io.to(data.roomId).emit("poll-vote", { ...data, totalVotes: total, percentages });
-  });
-  socket.on("mute-user",         (tid, rid) => {
-    if (rooms[rid]?.host !== socket.id) return;
-    let targetSocketId = tid;
-    const room = rooms[rid];
-    if (room && !io.sockets.sockets.get(tid)) {
-      const found = Object.entries(room.participants).find(([sid, p]) => p.userId === tid);
-      if (found) targetSocketId = found[0];
-    }
-    io.to(targetSocketId).emit("force-muted");
-  });
-  socket.on("send-message",      (data) => { io.to(data.roomId).emit("receive-message", { ...data, time: new Date().toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"}), timestamp: Date.now() }); });
-  socket.on("share-file",        (data) => { io.to(data.roomId).emit("receive-file", { ...data, time: new Date().toLocaleTimeString("es-PY",{hour:"2-digit",minute:"2-digit"}), timestamp: Date.now() }); });
-  socket.on("screen-share-start",(data) => { socket.to(data.roomId).emit("user-screen-share", data.userId, true); });
-  socket.on("screen-share-stop", (data) => { socket.to(data.roomId).emit("user-screen-share", data.userId, false); });
-  socket.on("media-state",       (data) => { socket.to(data.roomId).emit("user-media-state", data.userId, data.state); });
-  socket.on("reaction",          (data) => { io.to(data.roomId).emit("user-reaction", data.userName, data.emoji); });
-  socket.on("recording-started", (data) => { socket.to(data.roomId).emit("user-recording-started", { userName: data.userName }); });
-  socket.on("recording-stopped", (data) => { socket.to(data.roomId).emit("user-recording-stopped", { userName: data.userName }); });
+        // Notificar a las salas
+        for (const [roomId, room] of rooms) {
+          if (room.peers.has(userId)) {
+            room.peers.delete(userId);
+            io.to(roomId).emit('user-disconnected', userId);
+          }
+        }
 
-  socket.on("disconnect", () => {
-    for (const roomId in rooms) {
-      const room = rooms[roomId];
-      if (room.participants[socket.id]) {
-        const u = room.participants[socket.id];
-        socket.to(roomId).emit("user-disconnected", u.userId, u.userName);
-        delete room.participants[socket.id];
-        if (room.host === socket.id) socket.to(roomId).emit("host-left");
-        if (Object.keys(room.participants).length === 0) { delete rooms[roomId]; delete waitingRooms[roomId]; }
+        peers.delete(userId);
         break;
       }
     }
-    for (const roomId in waitingRooms) {
-      if (waitingRooms[roomId]) waitingRooms[roomId] = waitingRooms[roomId].filter(u => u.socketId !== socket.id);
-    }
   });
 });
 
+// ═══════════════════════════════════════════
+// ERROR HANDLING
+// ═══════════════════════════════════════════
 app.use((req, res) => res.status(404).send('<h1 style="font-family:sans-serif;text-align:center;padding:80px">404<br><a href="/">Inicio</a></h1>'));
-app.use((err, req, res, next) => { console.error(err.message); res.status(500).send('<h1 style="font-family:sans-serif;text-align:center;padding:80px">500 - Error<br><a href="/">Inicio</a></h1>'); });
-
-server.listen(PORT, () => {
-  console.log(`IFD Meet -> ${APP_URL}`);
-  console.log(`Pass: ${IFD_PASS}`);
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  res.status(500).send('<h1 style="font-family:sans-serif;text-align:center;padding:80px">500 - Error<br><a href="/">Inicio</a></h1>');
 });
 
-process.on('SIGINT', () => server.close(() => process.exit(0)));
+// ═══════════════════════════════════════════
+// START SERVER
+// ═══════════════════════════════════════════
+startMediasoup().then(() => {
+  server.listen(PORT, () => {
+    console.log(`
+╔═══════════════════════════════════════╗
+║   🎓 IFD MEET - MediaSoup v3.0       ║
+║                                       ║
+║   ✅ Server: ${APP_URL}
+║   ✅ MediaSoup: ${MEDIASOUP_ANNOUNCED_IP}:${MEDIASOUP_MIN_PORT}-${MEDIASOUP_MAX_PORT}
+║   ✅ Node.js: ${process.version}
+║                                       ║
+╚═══════════════════════════════════════╝
+    `);
+  });
+}).catch(err => {
+  console.error('❌ Error iniciando MediaSoup:', err);
+  process.exit(1);
+});
+
+process.on('SIGINT', () => {
+  console.log('\n👋 Apagando servidor...');
+  server.close(() => process.exit(0));
+});
